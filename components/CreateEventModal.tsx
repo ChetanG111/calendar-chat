@@ -211,7 +211,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                             <span className="font-medium">{event ? 'Edit Event' : 'Event'}</span>
                         </div>
                         <div className="flex items-center">
-                            <button onClick={onClose} className="p-2 text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-[#303134] rounded-full transition-colors">
+                            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-[#303134] rounded-full transition-colors">
                                 <span className="material-symbols-outlined text-[20px]">close</span>
                             </button>
                         </div>
@@ -224,8 +224,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                         <div className="ml-10">
                             <input
                                 autoFocus
-                                className="w-full bg-transparent border-0 border-b-2 border-zinc-700/50 focus:border-blue-400/80 p-0 py-1.5 text-[24px] text-[#e8eaed] focus:ring-0 placeholder-[#9aa0a6] font-normal leading-tight transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] focus:shadow-[0_3px_12px_rgba(59,130,246,0.15)] outline-none"
-                                placeholder="Add title"
+                                className="w-full bg-transparent focus:bg-[#303134]/50 border-0 px-2 py-1.5 rounded-md text-[20px] text-[#e8eaed] focus:ring-0 placeholder-[#9aa0a6] font-normal leading-tight transition-all duration-200 outline-none"
+                                placeholder="Title"
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
@@ -285,8 +285,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                             </div>
                             <div className="flex-1">
                                 <textarea
-                                    className="w-full bg-[#303134]/20 border border-zinc-700/30 hover:border-zinc-600/60 focus:border-blue-400/70 rounded-lg px-4 py-3 text-sm text-[#e8eaed] placeholder-[#9aa0a6]/70 focus:ring-0 resize-none transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] focus:shadow-[0_0_0_1px_rgba(59,130,246,0.12),0_4px_16px_rgba(59,130,246,0.08)] focus:bg-[#303134]/40 outline-none"
-                                    placeholder="Add description"
+                                    className="w-full bg-[#303134]/20 focus:bg-[#303134]/60 border border-zinc-700/30 hover:border-zinc-600/60 rounded-lg px-4 py-3 text-sm text-[#e8eaed] placeholder-[#9aa0a6]/70 focus:ring-0 resize-none transition-all duration-200 outline-none"
+                                    placeholder="Description"
                                     rows={4}
                                     value={description}
                                     onChange={e => setDescription(e.target.value)}

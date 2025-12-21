@@ -9,9 +9,10 @@ interface MonthViewProps {
   onDateChange: (date: Date) => void;
   onEventClick?: (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => void;
   onNewEvent?: () => void;
+  selectedEventId?: string;
 }
 
-const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange, onEventClick, onNewEvent }) => {
+const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange, onEventClick, onNewEvent, selectedEventId }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,12 +57,12 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
           return (
             <div
               key={idx}
-              onClick={() => {
+              onDoubleClick={() => {
                 // Clicking a cell now triggers new event instead of navigation
                 onDateChange(cell.date); // optional: still update current date context
                 if (onNewEvent) onNewEvent();
               }}
-              className={`min-h-[120px] border-b border-r border-border-dark p-2 relative group hover:bg-white/5 transition-colors cursor-pointer
+              className={`min-h-[120px] border-b border-r border-border-dark p-2 relative group hover:bg-white/5 transition-colors cursor-pointer select-none
                 ${cell.type !== 'current' ? 'bg-black/20' : ''}
               `}
             >
@@ -87,7 +88,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
                           onEventClick?.(ev, e.currentTarget.getBoundingClientRect(), containerRect);
                         }
                       }}
-                      className="flex items-center gap-1.5 px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
+                      className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors ${ev.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.hover}`}`}
                     >
                       <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></div>
                       <span className="text-xs font-medium text-gray-400 truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
@@ -105,7 +106,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
           );
         })}
       </div>
-    </div>
+    </div >
   );
 };
 

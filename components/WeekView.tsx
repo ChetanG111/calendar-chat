@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { CalendarEvent, EVENT_THEMES } from '@/types';
+import { arrangeEvents } from '@/lib/utils';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -9,9 +10,10 @@ interface WeekViewProps {
   onDateChange: (date: Date) => void;
   onNewEvent?: (data?: Partial<CalendarEvent>) => void;
   onEventClick?: (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => void;
+  selectedEventId?: string;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, onNewEvent, onEventClick }) => {
+const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, onNewEvent, onEventClick, selectedEventId }) => {
   // Calculate start of week (Sunday)
   const startOfWeek = new Date(currentDate);
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
@@ -101,8 +103,8 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
             {weekDays.map((day, idx) => (
               <div
                 key={idx}
-                className="relative hover:bg-white/5 transition-colors cursor-pointer group"
-                onClick={() => onNewEvent && onNewEvent({
+                className="relative hover:bg-white/5 transition-colors cursor-pointer group select-none"
+                onDoubleClick={() => onNewEvent && onNewEvent({
                   isAllDay: true,
                   start: day,
                   end: day
@@ -121,7 +123,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                           onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
                         }
                       }}
-                      className={`m-1 p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.bg} ${theme.border} ${theme.text} ${theme.hover}`}
+                      className={`m-1 p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover}`}
                     >
                       {e.title}
                     </div>
@@ -163,18 +165,20 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
               {weekDays.map((day, dayIdx) => (
                 <div
                   key={dayIdx}
-                  className="relative cursor-pointer"
-                  onClick={(e) => {
+                  className="relative cursor-pointer select-none"
+                  onDoubleClick={(e) => {
                     e.stopPropagation();
                     if (onNewEvent) onNewEvent();
                   }}
                 >
                   {/* Events for this day */}
-                  {events.filter(e => !e.isAllDay && e.start.getDay() === dayIdx).map(event => {
-                    // Check if event falls in this week
-                    const eventDate = event.start;
-                    if (eventDate < weekDays[0] || eventDate > weekDays[6]) return null;
-
+                  {arrangeEvents(events.filter(e => {
+                    if (e.isAllDay) return false;
+                    if (e.start.getDay() !== dayIdx) return false;
+                    const eventDate = e.start;
+                    if (eventDate < weekDays[0] || eventDate > weekDays[6]) return false;
+                    return true;
+                  })).map(({ event, style }) => {
                     const startMin = event.start.getHours() * 60 + event.start.getMinutes();
                     const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
                     const theme = EVENT_THEMES[event.type] || EVENT_THEMES.business;
@@ -189,12 +193,12 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                             onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
                           }
                         }}
-                        className={`absolute z-10 p-1 border-l-4 rounded-r-md text-xs cursor-text shadow-sm transition-all overflow-hidden ${theme.bg} ${theme.border} ${theme.text} ${theme.hover}`}
+                        className={`absolute z-10 p-1 ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-text shadow-sm transition-all overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover}`}
                         style={{
                           top: `${startMin}px`,
                           height: `${duration}px`,
-                          left: '2px',
-                          right: '2px'
+                          left: style.left,
+                          width: style.width
                         }}
                       >
                         <p className="font-semibold truncate">{event.title}</p>

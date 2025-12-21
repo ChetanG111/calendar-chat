@@ -2,24 +2,42 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { CalendarEvent, EVENT_THEMES } from '@/types';
+import { arrangeEvents } from '@/lib/utils';
+
 
 interface DayViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onEventClick?: (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => void;
   onNewEvent?: (data?: Partial<CalendarEvent>) => void;
+  selectedEventId?: string;
 }
 
-const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, onNewEvent }) => {
+const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, onNewEvent, selectedEventId }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter events for this day
-  const daysEvents = events.filter(e =>
-    e.start.getDate() === currentDate.getDate() &&
-    e.start.getMonth() === currentDate.getMonth() &&
-    e.start.getFullYear() === currentDate.getFullYear()
-  );
+  // Filter events for this day, exclude all-day events, and deduplicate by content (Title + Time)
+  // This prevents visual stacking of identical events that might have different IDs
+  const daysEvents = events.reduce((acc, e) => {
+    // 1. Check Date match
+    const isSameDay = e.start.getDate() === currentDate.getDate() &&
+      e.start.getMonth() === currentDate.getMonth() &&
+      e.start.getFullYear() === currentDate.getFullYear();
+
+    if (!isSameDay) return acc;
+    if (e.isAllDay) return acc;
+
+    // 3. Deduplicate: Check if an identical event is already in the list
+    const isDuplicate = acc.some(existing =>
+      existing.title === e.title &&
+      Math.abs(existing.start.getTime() - e.start.getTime()) < 1000 &&
+      Math.abs(existing.end.getTime() - e.end.getTime()) < 1000
+    );
+
+    if (!isDuplicate) acc.push(e);
+    return acc;
+  }, [] as CalendarEvent[]);
 
   // State for current time indicator position
   const [currentTimePosition, setCurrentTimePosition] = useState<number | null>(() => {
@@ -72,8 +90,8 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
             All-day
           </div>
           <div
-            className="flex-1 relative cursor-pointer hover:bg-white/5 transition-colors p-1 flex flex-col gap-1"
-            onClick={() => onNewEvent && onNewEvent({ isAllDay: true, start: currentDate, end: currentDate })}
+            className="flex-1 relative cursor-pointer hover:bg-white/5 transition-colors p-1 flex flex-col gap-1 select-none"
+            onDoubleClick={() => onNewEvent && onNewEvent({ isAllDay: true, start: currentDate, end: currentDate })}
           >
             {/* All Day Events for this day */}
             {events.filter(e => e.isAllDay &&
@@ -92,7 +110,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
                       onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
                     }
                   }}
-                  className={`p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.bg} ${theme.border} ${theme.text} ${theme.hover}`}
+                  className={`p - 1 rounded border - l - 2 text - xs font - medium truncate cursor - pointer z - 10 transition - all shadow - sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover} `}
                 >
                   {e.title}
                 </div>
@@ -122,15 +140,15 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
             {/* Event Area */}
             <div
               ref={containerRef}
-              className="flex-1 relative bg-background-dark h-full cursor-pointer"
-              onClick={(e) => {
+              className="flex-1 relative bg-background-dark h-full cursor-pointer select-none"
+              onDoubleClick={(e) => {
                 // Simple handler for empty space click
                 if (onNewEvent) onNewEvent();
               }}
             >
               {/* Grid Lines */}
               {hours.map(hour => (
-                <div key={`grid-${hour}`} className="h-[60px] border-b border-zinc-800/50 w-full"></div>
+                <div key={`grid - ${hour} `} className="h-[60px] border-b border-zinc-800/50 w-full"></div>
               ))}
 
               {/* Current Time Line */}
@@ -143,7 +161,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
               )}
 
               {/* Events Rendering */}
-              {daysEvents.map((event) => {
+              {arrangeEvents(daysEvents).map(({ event, style }) => {
                 const startHour = event.start.getHours();
                 const startMin = event.start.getMinutes();
                 const durationMinutes = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
@@ -151,6 +169,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
 
                 const theme = EVENT_THEMES[event.type] || EVENT_THEMES.business;
 
+                const isSelected = event.id === selectedEventId;
                 return (
                   <div
                     key={event.id}
@@ -161,14 +180,20 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
                         onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
                       }
                     }}
-                    className={`absolute left-4 right-4 border-l-4 rounded-r-md px-3 py-2 flex justify-between items-start shadow-sm cursor-pointer transition-all group ${theme.bg} ${theme.border} ${theme.text} ${theme.hover}`}
-                    style={{ top: `${top}px`, height: `${durationMinutes}px`, minHeight: '40px' }}
+                    className={`absolute ${event.end >= new Date() ? 'border-l-4' : ''} rounded - md px - 3 py - 2 flex justify - between items - start shadow - sm cursor - pointer transition - all group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover} `}
+                    style={{
+                      top: `${top}px`,
+                      height: `${durationMinutes}px`,
+                      minHeight: '40px',
+                      left: style.left,
+                      width: style.width
+                    }}
                   >
-                    <div>
-                      <h4 className="text-sm font-medium">{event.title}</h4>
-                      {event.description && <p className="text-xs opacity-70 mt-1">{event.description}</p>}
+                    <div className="flex-1 min-w-0 pr-2">
+                      <h4 className="text-sm font-medium truncate">{event.title}</h4>
+                      {event.description && <p className="text-xs opacity-70 mt-1 truncate">{event.description}</p>}
                     </div>
-                    <span className="text-xs opacity-70 font-medium">
+                    <span className="text-xs opacity-70 font-medium flex-shrink-0 whitespace-nowrap">
                       {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>

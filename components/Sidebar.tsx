@@ -40,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDate, onDateChange }) => {
   }
 
   return (
-    <aside className="w-64 hidden md:flex flex-col border-r border-border-dark bg-surface-dark overflow-y-auto flex-shrink-0">
+    <aside className="w-64 flex flex-col border-r border-border-dark bg-surface-dark overflow-y-auto flex-shrink-0">
       <div className="p-4">
         {/* Days Header */}
         <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">

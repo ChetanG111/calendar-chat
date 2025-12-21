@@ -25,6 +25,24 @@ export default function Home() {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [initialEventData, setInitialEventData] = useState<Partial<CalendarEvent> | undefined>(undefined);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    // Responsive sidebar init
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 768) {
+                setIsSidebarOpen(false);
+            } else {
+                setIsSidebarOpen(true);
+            }
+        };
+
+        // Set initial state
+        handleResize();
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,7 +115,7 @@ export default function Home() {
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         className={className}
                     >
-                        <DayView currentDate={currentDate} events={events} onEventClick={handleEventClick} onNewEvent={handleNewEvent} />
+                        <DayView currentDate={currentDate} events={events} onEventClick={handleEventClick} onNewEvent={handleNewEvent} selectedEventId={selectedEvent?.id} />
                     </motion.div>
                 );
             case 'week':
@@ -116,6 +134,7 @@ export default function Home() {
                             onDateChange={setCurrentDate}
                             onNewEvent={handleNewEvent}
                             onEventClick={handleEventClick}
+                            selectedEventId={selectedEvent?.id}
                         />
                     </motion.div>
                 );
@@ -129,7 +148,7 @@ export default function Home() {
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         className={className}
                     >
-                        <MonthView currentDate={currentDate} events={events} onDateChange={setCurrentDate} onEventClick={handleEventClick} onNewEvent={handleNewEvent} />
+                        <MonthView currentDate={currentDate} events={events} onDateChange={setCurrentDate} onEventClick={handleEventClick} onNewEvent={handleNewEvent} selectedEventId={selectedEvent?.id} />
                     </motion.div>
                 );
             case 'chat':
@@ -167,6 +186,7 @@ export default function Home() {
                             onDateChange={setCurrentDate}
                             onNewEvent={handleNewEvent}
                             onEventClick={handleEventClick}
+                            selectedEventId={selectedEvent?.id}
                         />
                     </motion.div>
                 );
@@ -315,10 +335,22 @@ export default function Home() {
             <header className="h-16 flex-none border-b border-border-dark bg-surface-dark z-50 flex items-center justify-between px-4 relative">
                 {/* Left Section: Date & Navigation */}
                 <div className="flex items-center space-x-6">
-                    <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setCurrentView('month')}>
-                        <h1 className="text-xl font-bold tracking-tight text-white hidden md:block">
-                            {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </h1>
+                    <div className="flex items-center space-x-4">
+                        <button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                            aria-label="Toggle Sidebar"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <line x1="9" y1="3" x2="9" y2="21" />
+                            </svg>
+                        </button>
+                        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setCurrentView('month')}>
+                            <h1 className="text-xl font-bold tracking-tight text-white hidden md:block">
+                                {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </h1>
+                        </div>
                     </div>
 
                     <div className="flex items-center space-x-1">
@@ -354,7 +386,19 @@ export default function Home() {
 
             {/* Main Content Layout */}
             <div className="flex flex-1 overflow-hidden relative w-full">
-                <Sidebar currentDate={currentDate} onDateChange={setCurrentDate} />
+                <AnimatePresence mode="wait">
+                    {isSidebarOpen && (
+                        <motion.div
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: "auto", opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            className="flex-shrink-0 overflow-hidden h-full flex"
+                        >
+                            <Sidebar currentDate={currentDate} onDateChange={setCurrentDate} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* View Area */}
                 <main className="flex-1 flex flex-col min-w-0 bg-background-dark relative overflow-hidden transition-all duration-300 ease-in-out">
