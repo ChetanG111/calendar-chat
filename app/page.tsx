@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { ViewType, MOCK_EVENTS, CalendarEvent } from '@/types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ViewType, CalendarEvent } from '@/types';
 import Sidebar from '@/components/Sidebar';
 import DayView from '@/components/DayView';
 import WeekView from '@/components/WeekView';
@@ -9,11 +9,21 @@ import MonthView from '@/components/MonthView';
 import ChatView from '@/components/ChatView';
 import CreateEventModal from '@/components/CreateEventModal';
 import EventSummaryPopover from '@/components/EventSummaryPopover';
+import ViewSwitcher from '@/components/ViewSwitcher';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    fetchEvents,
+    createEventApi,
+    updateEventApi,
+    deleteEventApi,
+    getViewDateRange,
+} from '@/lib/api/events';
 
 export default function Home() {
     const [currentView, setCurrentView] = useState<ViewType>('week');
     const [currentDate, setCurrentDate] = useState(new Date(2025, 11, 16)); // Dec 16 2025 as per screenshot
-    const [events, setEvents] = useState<CalendarEvent[]>(MOCK_EVENTS);
+    const [events, setEvents] = useState<CalendarEvent[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [initialEventData, setInitialEventData] = useState<Partial<CalendarEvent> | undefined>(undefined);
 
     // Modal State
@@ -24,34 +34,141 @@ export default function Home() {
     const [selectedEventRect, setSelectedEventRect] = useState<DOMRect | null>(null);
     const [selectedContainerRect, setSelectedContainerRect] = useState<DOMRect | null>(null);
 
+    /**
+     * Load events from the database for the current view
+     */
+    const loadEvents = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            // Get a wider range to ensure we capture all relevant events
+            // For week view, get the whole month; for month view, get surrounding months
+            const { start, end } = getViewDateRange(
+                currentView === 'chat' ? 'month' : currentView,
+                currentDate
+            );
+
+            // Expand the range a bit for better coverage
+            const rangeStart = new Date(start);
+            rangeStart.setDate(rangeStart.getDate() - 7);
+            const rangeEnd = new Date(end);
+            rangeEnd.setDate(rangeEnd.getDate() + 7);
+
+            const loadedEvents = await fetchEvents(rangeStart, rangeEnd);
+            setEvents(loadedEvents);
+        } catch (error) {
+            console.error('Failed to load events:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentView, currentDate]);
+
+    // Load events when view or date changes
+    useEffect(() => {
+        loadEvents();
+    }, [loadEvents]);
+
+    // Layout handling
     // Layout handling
     const renderView = () => {
+        if (isLoading && events.length === 0) {
+            return (
+                <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex-1 flex items-center justify-center"
+                >
+                    <div className="text-gray-400">Loading events...</div>
+                </motion.div>
+            );
+        }
+
+        const className = "flex-1 flex flex-col overflow-hidden";
+
         switch (currentView) {
             case 'day':
-                return <DayView currentDate={currentDate} events={events} onEventClick={handleEventClick} onNewEvent={handleNewEvent} />;
+                return (
+                    <motion.div
+                        key="day"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className={className}
+                    >
+                        <DayView currentDate={currentDate} events={events} onEventClick={handleEventClick} onNewEvent={handleNewEvent} />
+                    </motion.div>
+                );
             case 'week':
                 return (
-                    <WeekView
-                        currentDate={currentDate}
-                        events={events}
-                        onDateChange={setCurrentDate}
-                        onNewEvent={handleNewEvent}
-                        onEventClick={handleEventClick}
-                    />
+                    <motion.div
+                        key="week"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className={className}
+                    >
+                        <WeekView
+                            currentDate={currentDate}
+                            events={events}
+                            onDateChange={setCurrentDate}
+                            onNewEvent={handleNewEvent}
+                            onEventClick={handleEventClick}
+                        />
+                    </motion.div>
                 );
             case 'month':
-                return <MonthView currentDate={currentDate} events={events} onDateChange={setCurrentDate} onEventClick={handleEventClick} onNewEvent={handleNewEvent} />;
+                return (
+                    <motion.div
+                        key="month"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className={className}
+                    >
+                        <MonthView currentDate={currentDate} events={events} onDateChange={setCurrentDate} onEventClick={handleEventClick} onNewEvent={handleNewEvent} />
+                    </motion.div>
+                );
             case 'chat':
-                return <ChatView />;
+                return (
+                    <motion.div
+                        key="chat"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className={className}
+                    >
+                        <ChatView
+                            onViewChange={setCurrentView}
+                            onNavigateToday={() => {
+                                setCurrentDate(new Date());
+                                setCurrentView('day');
+                            }}
+                        />
+                    </motion.div>
+                );
             default:
                 return (
-                    <WeekView
-                        currentDate={currentDate}
-                        events={events}
-                        onDateChange={setCurrentDate}
-                        onNewEvent={handleNewEvent}
-                        onEventClick={handleEventClick}
-                    />
+                    <motion.div
+                        key="default"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className={className}
+                    >
+                        <WeekView
+                            currentDate={currentDate}
+                            events={events}
+                            onDateChange={setCurrentDate}
+                            onNewEvent={handleNewEvent}
+                            onEventClick={handleEventClick}
+                        />
+                    </motion.div>
                 );
         }
     };
@@ -97,36 +214,62 @@ export default function Home() {
         setIsModalOpen(true);
     };
 
-    const handleDeleteEvent = () => {
+    const handleDeleteEvent = async () => {
         if (selectedEvent) {
-            setEvents(events.filter(e => e.id !== selectedEvent.id));
-            setSelectedEventRect(null);
-            setSelectedContainerRect(null);
-            setSelectedEvent(undefined);
+            try {
+                // Extract the base event ID (remove instance suffix for recurring events)
+                const eventId = selectedEvent.id.includes('_2')
+                    ? selectedEvent.id.split('_').slice(0, 3).join('_')
+                    : selectedEvent.id;
+
+                await deleteEventApi(eventId);
+
+                // Optimistic update - remove from local state
+                setEvents(events.filter(e => !e.id.startsWith(eventId)));
+                setSelectedEventRect(null);
+                setSelectedContainerRect(null);
+                setSelectedEvent(undefined);
+
+                // Reload to ensure consistency
+                loadEvents();
+            } catch (error) {
+                console.error('Failed to delete event:', error);
+            }
         }
     };
 
-    const handleSaveEvent = (eventData: Partial<CalendarEvent>) => {
-        if (selectedEvent) {
-            // Update existing
-            setEvents(events.map(e => e.id === selectedEvent.id ? { ...e, ...eventData } as CalendarEvent : e));
-        } else {
-            // Create new
-            const newEvent: CalendarEvent = {
-                id: Math.random().toString(36).substr(2, 9),
-                title: eventData.title || '(No Title)',
-                start: eventData.start || new Date(),
-                end: eventData.end || new Date(new Date().getTime() + 3600000),
-                type: eventData.type || 'personal',
-                description: eventData.description,
-                location: eventData.location,
-                isAllDay: eventData.isAllDay
-            };
-            setEvents([...events, newEvent]);
+    const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
+        try {
+            if (selectedEvent) {
+                // Update existing - extract base event ID for recurring events
+                const eventId = selectedEvent.id.includes('_2')
+                    ? selectedEvent.id.split('_').slice(0, 3).join('_')
+                    : selectedEvent.id;
+
+                await updateEventApi(eventId, eventData);
+            } else {
+                // Create new
+                const newEventData = {
+                    title: eventData.title || '(No Title)',
+                    start: eventData.start || new Date(),
+                    end: eventData.end || new Date(new Date().getTime() + 3600000),
+                    type: eventData.type || 'personal',
+                    description: eventData.description,
+                    location: eventData.location,
+                    isAllDay: eventData.isAllDay,
+                };
+                await createEventApi(newEventData);
+            }
+
+            // Clear selection after save to reset state
+            setSelectedEvent(undefined);
+            setInitialEventData(undefined);
+
+            // Reload events to reflect changes
+            loadEvents();
+        } catch (error) {
+            console.error('Failed to save event:', error);
         }
-        // Clear selection after save to reset state
-        setSelectedEvent(undefined);
-        setInitialEventData(undefined);
     };
 
     const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -190,37 +333,17 @@ export default function Home() {
 
                 {/* Center Section: View Switcher - Positioned Absolutely */}
                 <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex bg-zinc-800 p-1 rounded-lg border border-border-dark">
-                        <button
-                            onClick={() => setCurrentView('day')}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${currentView === 'day' ? 'bg-zinc-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Day
-                        </button>
-                        <button
-                            onClick={() => setCurrentView('week')}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${currentView === 'week' ? 'bg-zinc-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Week
-                        </button>
-                        <button
-                            onClick={() => setCurrentView('month')}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${currentView === 'month' ? 'bg-zinc-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Month
-                        </button>
-                        <div className="w-px h-4 bg-zinc-700 mx-1 self-center"></div>
-                        <button
-                            onClick={() => setCurrentView('chat')}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1 ${currentView === 'chat' ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Chat
-                        </button>
-                    </div>
+                    <ViewSwitcher currentView={currentView} onChange={setCurrentView} />
                 </div>
 
                 {/* Right Section: Tools */}
                 <div className="flex items-center">
+                    <button
+                        onClick={() => setCurrentDate(new Date())}
+                        className="mr-4 px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                    >
+                        Today
+                    </button>
                     <img
                         alt="User"
                         className="w-8 h-8 rounded-full border border-gray-700 cursor-pointer object-cover hover:border-gray-500 transition-colors"
@@ -235,7 +358,9 @@ export default function Home() {
 
                 {/* View Area */}
                 <main className="flex-1 flex flex-col min-w-0 bg-background-dark relative overflow-hidden transition-all duration-300 ease-in-out">
-                    {renderView()}
+                    <AnimatePresence mode="wait" initial={false}>
+                        {renderView()}
+                    </AnimatePresence>
                 </main>
             </div>
         </div>

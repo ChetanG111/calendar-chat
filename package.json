@@ -6,14 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:demo": "ts-node --project scripts/tsconfig.json scripts/db-example.ts"
   },
   "dependencies": {
+    "better-sqlite3": "^12.5.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.26",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "rrule": "^2.8.1",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -22,6 +29,7 @@
     "eslint-config-next": "^15.1.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "ts-node": "^10.9.2",
     "typescript": "~5.8.2"
   }
 }

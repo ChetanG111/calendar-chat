@@ -11,6 +11,8 @@ export interface CalendarEvent {
   guests?: string[];
   meetLink?: string;
   isAllDay?: boolean;
+  rrule?: string;
+  timezone?: string;
 }
 
 export interface CalendarCategory {

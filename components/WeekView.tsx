@@ -144,7 +144,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
           <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark z-10 text-right pr-2 pt-2 select-none sticky left-0">
             {hours.map(h => (
               <div key={h} className="h-[60px] text-xs text-gray-500 relative -top-3">
-                {h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`}
+                {h === 0 ? '' : (h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`)}
               </div>
             ))}
           </div>

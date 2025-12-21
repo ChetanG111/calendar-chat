@@ -112,7 +112,9 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
             <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark text-right text-xs text-gray-500 font-medium z-10 h-full">
               {hours.map(hour => (
                 <div key={hour} className="h-[60px] pr-2 pt-2 border-b border-zinc-800/50 relative">
-                  <span className="-top-3 relative">{hour.toString().padStart(2, '0')}:00</span>
+                  <span className="-top-3 relative">
+                    {hour === 0 ? '' : `${hour.toString().padStart(2, '0')}:00`}
+                  </span>
                 </div>
               ))}
             </div>

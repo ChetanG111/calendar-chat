@@ -1,8 +1,17 @@
 "use client";
 
 import React from 'react';
+import { ViewType } from '@/types';
+import { clsx } from "clsx";
 
-const ChatView: React.FC = () => {
+interface ChatViewProps {
+  onViewChange?: (view: ViewType) => void;
+  onNavigateToday?: () => void;
+}
+
+const ChatView: React.FC<ChatViewProps> = ({ onViewChange, onNavigateToday }) => {
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
   return (
     <div className="flex flex-col h-full bg-background-dark relative overflow-hidden">
       {/* Chat Content Area */}
@@ -88,40 +97,70 @@ const ChatView: React.FC = () => {
 
       {/* Input Area */}
       <div className="absolute bottom-8 left-0 right-0 flex justify-center px-4">
-        <div className="w-full max-w-3xl bg-surface-dark rounded-[2rem] p-3 shadow-2xl border border-border-dark relative overflow-hidden">
-          {/* Context Tag */}
-          <div className="absolute top-4 left-4 z-10">
-            <div className="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-black/40 border border-white/10 text-xs text-gray-300 shadow-sm">
-              <div className="flex -space-x-1 mr-1">
-                <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[8px] text-white font-bold">JD</div>
-                <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center text-[8px] text-white font-bold">AI</div>
-              </div>
-              <span>Project Workflow</span>
-              <button className="ml-1 hover:text-white"><span className="material-symbols-outlined text-[12px]">close</span></button>
-            </div>
+        <div className="w-full max-w-3xl bg-surface-dark rounded-[2rem] p-2 shadow-2xl border border-border-dark flex items-center gap-2 relative">
+
+          {/* Add Button & Menu */}
+          <div className="relative flex-shrink-0 ml-1">
+            {isMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsMenuOpen(false)}
+                />
+                <div className="absolute bottom-12 left-0 w-52 bg-zinc-800/95 backdrop-blur-sm border border-zinc-700 rounded-2xl shadow-2xl z-50 overflow-hidden py-1.5 mb-2 transform origin-bottom-left animate-in fade-in zoom-in-95 duration-200">
+                  <button
+                    onClick={() => { onNavigateToday?.(); setIsMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-gray-200 hover:bg-white/10 transition-colors text-left"
+                  >
+                    <span className="material-symbols-outlined text-gray-400 text-[20px]">today</span>
+                    Today
+                  </button>
+                  <button
+                    onClick={() => { onViewChange?.('week'); setIsMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-gray-200 hover:bg-white/10 transition-colors text-left"
+                  >
+                    <span className="material-symbols-outlined text-gray-400 text-[20px]">view_week</span>
+                    Week
+                  </button>
+                  <button
+                    onClick={() => { onViewChange?.('month'); setIsMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-gray-200 hover:bg-white/10 transition-colors text-left"
+                  >
+                    <span className="material-symbols-outlined text-gray-400 text-[20px]">calendar_month</span>
+                    Month
+                  </button>
+                </div>
+              </>
+            )}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={clsx(
+                "w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200",
+                isMenuOpen
+                  ? "text-white rotate-45"
+                  : "text-gray-400 hover:text-white"
+              )}
+            >
+              <span className="material-symbols-outlined text-[20px]">add</span>
+            </button>
           </div>
 
+          {/* Textarea */}
           <textarea
-            className="w-full bg-transparent border-0 focus:ring-0 text-white placeholder-gray-500 resize-none pt-10 pb-12 px-3 text-base"
+            className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-white placeholder-gray-500 resize-none py-3 px-2 text-base"
             placeholder="Ask AI anything..."
             rows={1}
+            style={{ minHeight: '44px', maxHeight: '120px' }}
           />
 
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-white/10 transition-colors">
-                <span className="material-symbols-outlined">add_circle</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-white/10 transition-colors">
-                <span className="material-symbols-outlined text-[18px]">mic</span>
-              </button>
-              <button className="w-7 h-7 flex items-center justify-center rounded-full bg-primary text-white hover:brightness-110 transition-colors">
-                <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
-              </button>
-            </div>
+          {/* Right Buttons */}
+          <div className="flex items-center gap-2 mr-1 flex-shrink-0">
+            <button className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-white/10 transition-colors">
+              <span className="material-symbols-outlined text-[20px]">mic</span>
+            </button>
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white hover:brightness-110 transition-colors">
+              <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+            </button>
           </div>
         </div>
       </div>

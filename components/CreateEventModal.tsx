@@ -189,8 +189,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
 
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-center justify-center transition-all duration-300 ${isAnimating ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 backdrop-blur-none'
-                }`}
+            className={`fixed inset-0 z-[60] flex items-center justify-center transition-all duration-300 ease-out ${isAnimating ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 backdrop-blur-none'}`}
             onClick={onClose}
         >
             <div
@@ -199,10 +198,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 className="transition-transform duration-0 ease-linear"
             >
                 <div
-                    className={`w-[500px] bg-[#202124] rounded-xl shadow-2xl border border-zinc-700 font-sans flex flex-col transition-all duration-300 ease-out ${isAnimating
-                            ? 'opacity-100 scale-100 translate-y-0'
-                            : 'opacity-0 scale-95 -translate-y-4'
-                        }`}
+                    className={`w-[500px] bg-[#202124] rounded-xl shadow-2xl border border-zinc-700 font-sans flex flex-col transition-all duration-300 ease-out ${isAnimating ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-4'}`}
                 >
 
                     {/* Header / Drag Handle */}
@@ -228,7 +224,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                         <div className="ml-10">
                             <input
                                 autoFocus
-                                className="w-full bg-transparent border-0 border-b-2 border-zinc-700 focus:border-blue-400 p-0 py-1 text-[24px] text-[#e8eaed] focus:ring-0 placeholder-[#9aa0a6] font-normal leading-tight transition-all duration-300 ease-out focus:shadow-[0_2px_8px_rgba(59,130,246,0.3)]"
+                                className="w-full bg-transparent border-0 border-b-2 border-zinc-700/50 focus:border-blue-400/80 p-0 py-1.5 text-[24px] text-[#e8eaed] focus:ring-0 placeholder-[#9aa0a6] font-normal leading-tight transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] focus:shadow-[0_3px_12px_rgba(59,130,246,0.15)] outline-none"
                                 placeholder="Add title"
                                 type="text"
                                 value={title}
@@ -289,7 +285,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                             </div>
                             <div className="flex-1">
                                 <textarea
-                                    className="w-full bg-[#303134]/30 border border-transparent hover:border-zinc-600 focus:border-blue-400 rounded-lg px-4 py-3 text-sm text-[#e8eaed] placeholder-[#9aa0a6] focus:ring-0 resize-none transition-all duration-300 ease-out focus:shadow-[0_0_0_3px_rgba(59,130,246,0.15),0_0_12px_rgba(59,130,246,0.2)] focus:bg-[#303134]/50"
+                                    className="w-full bg-[#303134]/20 border border-zinc-700/30 hover:border-zinc-600/60 focus:border-blue-400/70 rounded-lg px-4 py-3 text-sm text-[#e8eaed] placeholder-[#9aa0a6]/70 focus:ring-0 resize-none transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] focus:shadow-[0_0_0_1px_rgba(59,130,246,0.12),0_4px_16px_rgba(59,130,246,0.08)] focus:bg-[#303134]/40 outline-none"
                                     placeholder="Add description"
                                     rows={4}
                                     value={description}
