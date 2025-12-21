@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
@@ -6,7 +6,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Scrollbar */
+@layer base {
+    :root {
+        --background: #f5f5f0;
+        --foreground: #1a1a1a;
+        --accent: #2d2d2d;
+        --border: #1a1a1a;
+        --surface: #ffffff;
+    }
+
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+        font-family: "Inter", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+    }
+
+    * {
+        border-color: var(--border);
+    }
+}
+
+/* Brutalist Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -17,41 +41,45 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #3f3f46;
-    border-radius: 4px;
+    background: #1a1a1a;
+    border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
+    background: #2d2d2d;
 }
 
-/* Material Symbols */
+/* Material Symbols - Bold Weight */
 .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Base body styles */
-body {
-    @apply bg-background-dark text-gray-200 font-sans antialiased;
+/* Mechanical Motion */
+.brutal-transition {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Animations for premium feel */
-@keyframes zoomIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
+.brutal-bounce {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@layer utilities {
+    .brutal-shadow {
+        box-shadow: 4px 4px 0 0 #1a1a1a;
     }
 
-    to {
-        opacity: 1;
-        transform: scale(1);
+    .brutal-shadow-sm {
+        box-shadow: 2px 2px 0 0 #1a1a1a;
     }
-}
 
-.animate-in.fade-in.zoom-in-95 {
-    animation: zoomIn 150ms ease-out forwards;
-}
+    .brutal-shadow-lg {
+        box-shadow: 6px 6px 0 0 #1a1a1a;
+    }
 
-.animate-in.fade-in.zoom-in {
-    animation: zoomIn 200ms ease-out forwards;
+    .text-balance {
+        text-wrap: balance;
+    }
 }

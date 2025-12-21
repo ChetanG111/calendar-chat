@@ -56,12 +56,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
   const isTodayInView = weekDays.some(day => isToday(day));
 
   return (
-    <div className="flex flex-1 flex-col min-w-0 bg-background-dark relative h-full">
+    <div className="flex flex-1 flex-col min-w-0 bg-surface relative h-full">
       {/* Week Header */}
-      <div className="flex-none flex border-b border-border-dark bg-surface-dark">
-        <div className="w-16 flex-shrink-0 border-r border-border-dark">
-          <div className="h-16 flex items-end justify-center pb-2 text-xs text-gray-500">
-            GMT-05
+      <div className="flex-none flex border-b border-border bg-canvas">
+        <div className="w-20 flex-shrink-0 border-r border-border">
+          <div className="h-20 flex items-center justify-center p-4">
+            <span className="text-xs font-semibold text-fg-muted uppercase tracking-wider leading-tight text-center">
+              UTC<br />-05
+            </span>
           </div>
         </div>
         <div className="flex-1 relative">
@@ -70,15 +72,15 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
               const active = isToday(day);
               const isSelected = day.getDate() === currentDate.getDate();
               return (
-                <div key={idx} className={`h-16 flex flex-col items-center justify-center relative ${active ? 'bg-primary/5' : ''}`}>
-                  <span className={`text-xs font-medium uppercase mb-1 ${active ? 'text-primary' : 'text-gray-400'}`}>
+                <div key={idx} className={`h-20 flex flex-col items-center justify-center relative transition-colors ${active ? 'bg-accent/[0.03]' : ''}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-[0.15em] mb-2 ${active ? 'text-accent' : 'text-fg-subtle'}`}>
                     {day.toLocaleDateString('en-US', { weekday: 'short' })}
                   </span>
                   <button
                     onClick={() => onDateChange(day)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-semibold transition-all
-                    ${active ? 'bg-primary text-white' : 'text-gray-200 hover:bg-white/10'}
-                    ${!active && isSelected ? 'bg-white/10' : ''}
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold transition-all
+                    ${active ? 'bg-accent text-white shadow-premium-sm' : 'text-foreground hover:bg-white/10'}
+                    ${!active && isSelected ? 'ring-1 ring-white/20' : ''}
                   `}>
                     {day.getDate()}
                   </button>
@@ -88,14 +90,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
           </div>
           {/* Vertical grid lines */}
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark" style={{ left: `${((i + 1) / 7) * 100}%` }} />
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-border/50" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
       </div>
 
       {/* All Day Section */}
-      <div className="flex-none flex border-b border-border-dark bg-surface-dark min-h-[40px]">
-        <div className="w-16 flex-shrink-0 border-r border-border-dark flex items-center justify-center text-xs text-gray-500 p-2">
+      <div className="flex-none flex border-b border-border bg-canvas/40 min-h-[48px]">
+        <div className="w-20 flex-shrink-0 border-r border-border flex items-center justify-center text-[10px] font-bold uppercase tracking-wider text-fg-subtle p-2">
           All-day
         </div>
         <div className="flex-1 relative">
@@ -103,7 +105,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
             {weekDays.map((day, idx) => (
               <div
                 key={idx}
-                className="relative hover:bg-white/5 transition-colors cursor-pointer group select-none"
+                className="relative hover:bg-white/[0.02] transition-colors cursor-pointer group select-none p-1"
                 onDoubleClick={() => onNewEvent && onNewEvent({
                   isAllDay: true,
                   start: day,
@@ -123,7 +125,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                           onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
                         }
                       }}
-                      className={`m-1 p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover}`}
+                      className={`mb-1 px-2 py-0.5 rounded border-l-2 text-[10px] font-bold truncate cursor-pointer z-10 transition-all ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover}`}
                     >
                       {e.title}
                     </div>
@@ -134,18 +136,18 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
           </div>
           {/* Vertical grid lines */}
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark pointer-events-none" style={{ left: `${((i + 1) / 7) * 100}%` }} />
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-border/50 pointer-events-none" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
       </div>
 
       {/* Main Grid */}
-      <div className="flex-1 overflow-y-auto relative bg-background-dark custom-scrollbar">
+      <div className="flex-1 overflow-y-auto relative bg-background custom-scrollbar">
         <div className="flex h-[1440px] relative">
           {/* Time Labels */}
-          <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark z-10 text-right pr-2 pt-2 select-none sticky left-0">
+          <div className="w-20 flex-shrink-0 border-r border-border bg-canvas/20 z-10 text-right pr-3 pt-2 select-none sticky left-0">
             {hours.map(h => (
-              <div key={h} className="h-[60px] text-xs text-gray-500 relative -top-3">
+              <div key={h} className="h-[60px] text-[10px] font-bold text-fg-subtle relative -top-3 uppercase tracking-widest">
                 {h === 0 ? '' : (h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`)}
               </div>
             ))}
@@ -156,7 +158,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
             {/* Horizontal Lines - full width across all columns */}
             <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
               {hours.map(h => (
-                <div key={h} className="h-[60px] border-b border-zinc-800/50 w-full"></div>
+                <div key={h} className="h-[60px] border-b border-border/30 w-full"></div>
               ))}
             </div>
 
@@ -182,6 +184,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                     const startMin = event.start.getHours() * 60 + event.start.getMinutes();
                     const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
                     const theme = EVENT_THEMES[event.type] || EVENT_THEMES.business;
+                    const isSelected = event.id === selectedEventId;
 
                     return (
                       <div
@@ -193,16 +196,19 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                             onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
                           }
                         }}
-                        className={`absolute z-10 p-1 ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-text shadow-sm transition-all overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover}`}
+                        className={`absolute z-10 p-3 border-l-4 rounded-lg text-xs cursor-pointer shadow-premium-sm transition-all duration-200 overflow-hidden ${theme.border} ${isSelected ? `${theme.solidBg} text-white scale-[1.02] z-30` : `${theme.bg} ${theme.text} hover:scale-[1.01] hover:z-20`} `}
                         style={{
                           top: `${startMin}px`,
                           height: `${duration}px`,
+                          minHeight: '40px',
                           left: style.left,
                           width: style.width
                         }}
                       >
-                        <p className="font-semibold truncate">{event.title}</p>
-                        <p className="opacity-80">{event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="font-bold truncate leading-tight mb-0.5">{event.title}</p>
+                        <p className="text-[10px] font-bold opacity-70 tracking-tight">
+                          {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                        </p>
                       </div>
                     );
                   })}
@@ -210,8 +216,8 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                   {/* Current Time Line - only on today's column */}
                   {isToday(day) && (
                     <div className="absolute inset-x-0 z-20 pointer-events-none flex items-center" style={{ top: `${currentTimePosition}px` }}>
-                      <div className="w-full border-t border-red-500 relative">
-                        <div className="absolute -left-[5px] -top-[5px] w-2.5 h-2.5 bg-red-500 rounded-full shadow-md"></div>
+                      <div className="w-full border-t border-accent relative">
+                        <div className="absolute -left-[4px] -top-[4px] w-2 h-2 bg-accent rounded-full ring-4 ring-accent/20"></div>
                       </div>
                     </div>
                   )}
@@ -221,7 +227,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
 
             {/* Vertical grid lines positioned to match header */}
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark pointer-events-none z-[5]" style={{ left: `${((i + 1) / 7) * 100}%` }} />
+              <div key={i} className="absolute top-0 bottom-0 w-px bg-border/50 pointer-events-none z-[5]" style={{ left: `${((i + 1) / 7) * 100}%` }} />
             ))}
           </div>
         </div>

@@ -38,18 +38,18 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
   }
 
   return (
-    <div className="flex flex-col flex-grow h-full bg-background-dark">
+    <div className="flex flex-col flex-grow h-full bg-background">
       {/* Weekday Header */}
-      <div className="grid grid-cols-7 border-b border-border-dark bg-surface-dark">
+      <div className="grid grid-cols-7 border-b-2 border-black bg-white">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center py-3 text-sm font-semibold text-gray-400 border-r border-transparent">
+          <div key={day} className="text-center py-4 text-sm font-bold text-black uppercase tracking-wide border-r-2 last:border-r-0 border-black">
             {day}
           </div>
         ))}
       </div>
 
       {/* Grid */}
-      <div ref={containerRef} className="grid grid-cols-7 flex-grow border-l border-border-dark">
+      <div ref={containerRef} className="grid grid-cols-7 flex-grow border-l-2 border-black">
         {grid.map((cell, idx) => {
           const isToday = new Date().toDateString() === cell.date.toDateString();
           const dayEvents = events.filter(e => e.start.toDateString() === cell.date.toDateString());
@@ -62,20 +62,20 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
                 onDateChange(cell.date); // optional: still update current date context
                 if (onNewEvent) onNewEvent();
               }}
-              className={`min-h-[120px] border-b border-r border-border-dark p-2 relative group hover:bg-white/5 transition-colors cursor-pointer select-none
-                ${cell.type !== 'current' ? 'bg-black/20' : ''}
+              className={`min-h-[120px] border-b-2 border-r-2 last:border-r-0 border-black p-3 relative group hover:bg-gray-100 brutal-transition cursor-pointer select-none
+                ${cell.type !== 'current' ? 'bg-gray-50 opacity-50' : 'bg-white'}
               `}
             >
               <div className="flex justify-end mb-2">
                 <span className={`
-                  text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full
-                  ${isToday ? 'bg-primary text-white' : (cell.type === 'current' ? 'text-gray-200' : 'text-gray-600')}
+                  text-sm font-bold w-8 h-8 flex items-center justify-center border-2
+                  ${isToday ? 'bg-black text-white border-black' : (cell.type === 'current' ? 'text-black border-transparent' : 'text-gray-400 border-transparent')}
                 `}>
                   {cell.day == 1 ? `${cell.day} ${cell.date.toLocaleString('default', { month: 'short' })}` : cell.day}
                 </span>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {dayEvents.slice(0, 3).map(ev => {
                   const theme = EVENT_THEMES[ev.type] || EVENT_THEMES.business;
                   return (
@@ -88,16 +88,16 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
                           onEventClick?.(ev, e.currentTarget.getBoundingClientRect(), containerRect);
                         }
                       }}
-                      className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors ${ev.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.hover}`}`}
+                      className={`flex items-center gap-2 px-2 py-1 border-2 border-black brutal-transition hover:scale-[1.02] ${ev.id === selectedEventId ? `${theme.solidBg} text-white font-bold` : `${theme.bg} ${theme.text} font-bold`}`}
                     >
-                      <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></div>
-                      <span className="text-xs font-medium text-gray-400 truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                      <span className="text-xs text-gray-300 truncate font-medium">{ev.title}</span>
+                      <div className={`w-2 h-2 border-2 border-black ${theme.dot}`}></div>
+                      <span className="text-xs font-bold truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                      <span className="text-xs truncate font-bold">{ev.title}</span>
                     </div>
                   )
                 })}
                 {dayEvents.length > 3 && (
-                  <div className="text-xs text-gray-500 font-medium px-2 py-1">
+                  <div className="text-xs text-fg-muted font-bold px-2 py-1">
                     {dayEvents.length - 3} more
                   </div>
                 )}

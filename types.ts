@@ -24,10 +24,38 @@ export interface CalendarCategory {
 }
 
 export const EVENT_THEMES = {
-  business: { bg: 'bg-blue-500/20', border: 'border-blue-500', text: 'text-blue-100', dot: 'bg-blue-500', hover: 'hover:bg-blue-500/30', solidBg: 'bg-blue-500' },
-  personal: { bg: 'bg-red-500/20', border: 'border-red-500', text: 'text-red-100', dot: 'bg-red-500', hover: 'hover:bg-red-500/30', solidBg: 'bg-red-500' },
-  meetings: { bg: 'bg-orange-500/20', border: 'border-orange-500', text: 'text-orange-100', dot: 'bg-orange-500', hover: 'hover:bg-orange-500/30', solidBg: 'bg-orange-500' },
-  holiday: { bg: 'bg-green-500/20', border: 'border-green-500', text: 'text-green-100', dot: 'bg-green-500', hover: 'hover:bg-green-500/30', solidBg: 'bg-green-500' },
+  business: {
+    bg: 'bg-blue-600',
+    border: 'border-blue-600',
+    text: 'text-blue-900',
+    dot: 'bg-blue-900',
+    hover: 'hover:bg-blue-700',
+    solidBg: 'bg-blue-600'
+  },
+  personal: {
+    bg: 'bg-red-600',
+    border: 'border-red-600',
+    text: 'text-red-900',
+    dot: 'bg-red-900',
+    hover: 'hover:bg-red-700',
+    solidBg: 'bg-red-600'
+  },
+  meetings: {
+    bg: 'bg-orange-600',
+    border: 'border-orange-600',
+    text: 'text-orange-900',
+    dot: 'bg-orange-900',
+    hover: 'hover:bg-orange-700',
+    solidBg: 'bg-orange-600'
+  },
+  holiday: {
+    bg: 'bg-green-600',
+    border: 'border-green-600',
+    text: 'text-green-900',
+    dot: 'bg-green-900',
+    hover: 'hover:bg-green-700',
+    solidBg: 'bg-green-600'
+  },
 };
 
 export const MOCK_EVENTS: CalendarEvent[] = [

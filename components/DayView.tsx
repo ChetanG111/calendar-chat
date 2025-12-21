@@ -70,27 +70,27 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
   }, [currentDate]);
 
   return (
-    <div className="flex flex-1 flex-col h-full bg-background-dark overflow-hidden">
+    <div className="flex flex-1 flex-col h-full bg-background overflow-hidden">
       {/* Day Header */}
-      <div className="flex-none px-6 py-4 border-b border-border-dark bg-surface-dark">
-        <div className="flex flex-col">
-          <span className="text-xs uppercase tracking-wide font-semibold text-gray-400">
+      <div className="flex-none px-8 py-6 border-b-2 border-black bg-white">
+        <div className="flex flex-col gap-2">
+          <span className="text-xs uppercase tracking-[0.2em] font-black text-fg-muted">
             {currentDate.toLocaleDateString('en-US', { weekday: 'long' })}
           </span>
-          <span className="text-2xl font-bold text-white">
-            {currentDate.getDate()}
-          </span>
+          <h1 className="text-4xl font-black text-black">
+            {currentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}
+          </h1>
         </div>
       </div>
 
       {/* All Day Section */}
-      <div className="flex-none border-b border-border-dark bg-surface-dark min-h-[50px]">
+      <div className="flex-none border-b-2 border-black bg-white min-h-[56px]">
         <div className="flex h-full">
-          <div className="w-16 flex-shrink-0 border-r border-border-dark flex items-center justify-center text-xs text-gray-500 bg-surface-dark">
+          <div className="w-20 flex-shrink-0 border-r-2 border-black flex items-center justify-center text-xs font-black uppercase tracking-wider text-black">
             All-day
           </div>
           <div
-            className="flex-1 relative cursor-pointer hover:bg-white/5 transition-colors p-1 flex flex-col gap-1 select-none"
+            className="flex-1 relative cursor-pointer hover:bg-gray-100 brutal-transition p-3 flex flex-col gap-2 select-none"
             onDoubleClick={() => onNewEvent && onNewEvent({ isAllDay: true, start: currentDate, end: currentDate })}
           >
             {/* All Day Events for this day */}
@@ -110,7 +110,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
                       onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
                     }
                   }}
-                  className={`p - 1 rounded border - l - 2 text - xs font - medium truncate cursor - pointer z - 10 transition - all shadow - sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover} `}
+                  className={`px-4 py-2 border-2 border-black text-sm font-bold truncate cursor-pointer z-10 brutal-transition hover:scale-[1.01] ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`}`}
                 >
                   {e.title}
                 </div>
@@ -121,15 +121,13 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
       </div>
 
       {/* Scrollable Timeline */}
-      <div className="flex-1 overflow-y-auto relative bg-background-dark scroll-smooth custom-scrollbar">
-        {/* Enforce explicit height to ensure child elements stretch correctly */}
+      <div className="flex-1 overflow-y-auto relative bg-background scroll-smooth custom-scrollbar">
         <div className="relative w-full h-[1440px]">
-
           <div className="flex h-full">
             {/* Time Column */}
-            <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark text-right text-xs text-gray-500 font-medium z-10 h-full">
+            <div className="w-20 flex-shrink-0 border-r-2 border-black bg-white text-right text-xs font-black text-black uppercase tracking-widest z-10 h-full">
               {hours.map(hour => (
-                <div key={hour} className="h-[60px] pr-2 pt-2 border-b border-zinc-800/50 relative">
+                <div key={hour} className="h-[60px] pr-3 pt-2 border-b-2 border-gray-300 relative">
                   <span className="-top-3 relative">
                     {hour === 0 ? '' : `${hour.toString().padStart(2, '0')}:00`}
                   </span>
@@ -140,22 +138,21 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
             {/* Event Area */}
             <div
               ref={containerRef}
-              className="flex-1 relative bg-background-dark h-full cursor-pointer select-none"
+              className="flex-1 relative bg-background  h-full cursor-pointer select-none"
               onDoubleClick={(e) => {
-                // Simple handler for empty space click
                 if (onNewEvent) onNewEvent();
               }}
             >
               {/* Grid Lines */}
               {hours.map(hour => (
-                <div key={`grid - ${hour} `} className="h-[60px] border-b border-zinc-800/50 w-full"></div>
+                <div key={`grid-${hour}`} className="h-[60px] border-b-2 border-gray-100 w-full"></div>
               ))}
 
               {/* Current Time Line */}
               {currentTimePosition !== null && (
                 <div className="absolute w-full z-20 pointer-events-none flex items-center" style={{ top: `${currentTimePosition}px` }}>
-                  <div className="w-full border-t border-red-500 relative">
-                    <div className="absolute -left-[5px] -top-[5px] w-2.5 h-2.5 bg-red-500 rounded-full shadow-md"></div>
+                  <div className="w-full border-t border-accent relative">
+                    <div className="absolute -left-[4px] -top-[4px] w-2 h-2 bg-accent rounded-full ring-4 ring-accent/20"></div>
                   </div>
                 </div>
               )}
@@ -168,8 +165,8 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
                 const top = (startHour * 60) + startMin;
 
                 const theme = EVENT_THEMES[event.type] || EVENT_THEMES.business;
-
                 const isSelected = event.id === selectedEventId;
+
                 return (
                   <div
                     key={event.id}
@@ -180,22 +177,26 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
                         onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
                       }
                     }}
-                    className={`absolute ${event.end >= new Date() ? 'border-l-4' : ''} rounded - md px - 3 py - 2 flex justify - between items - start shadow - sm cursor - pointer transition - all group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover} `}
+                    className={`absolute px-4 py-3 flex flex-col justify-start items-start border-2 border-black cursor-pointer brutal-transition group ${isSelected ? `${theme.solidBg} text-white z-30 brutal-shadow` : `${theme.bg} ${theme.text} hover:brutal-shadow hover:z-20`} `}
                     style={{
                       top: `${top}px`,
                       height: `${durationMinutes}px`,
-                      minHeight: '40px',
+                      minHeight: '48px',
                       left: style.left,
                       width: style.width
                     }}
                   >
-                    <div className="flex-1 min-w-0 pr-2">
-                      <h4 className="text-sm font-medium truncate">{event.title}</h4>
-                      {event.description && <p className="text-xs opacity-70 mt-1 truncate">{event.description}</p>}
+                    <div className="flex justify-between items-start w-full mb-1">
+                      <h4 className="text-sm font-bold truncate leading-none">{event.title}</h4>
+                      <span className="text-xs font-black opacity-70 uppercase tracking-wider whitespace-nowrap ml-2">
+                        {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </span>
                     </div>
-                    <span className="text-xs opacity-70 font-medium flex-shrink-0 whitespace-nowrap">
-                      {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    {event.description && durationMinutes > 60 && (
+                      <p className="text-xs font-bold opacity-60 truncate w-full">
+                        {event.description}
+                      </p>
+                    )}
                   </div>
                 );
               })}

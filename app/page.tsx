@@ -307,7 +307,7 @@ export default function Home() {
     };
 
     return (
-        <div onClick={handleBackgroundClick} className="flex flex-col h-screen bg-background-dark text-gray-200 overflow-hidden font-sans">
+        <div onClick={handleBackgroundClick} className="flex flex-col h-screen bg-background text-foreground overflow-hidden font-sans">
 
             {/* Create/Edit Event Modal - Full Edit Mode */}
             <CreateEventModal
@@ -332,32 +332,32 @@ export default function Home() {
             )}
 
             {/* Global Header - Flex Item, not fixed */}
-            <header className="h-16 flex-none border-b border-border-dark bg-surface-dark z-50 flex items-center justify-between px-4 relative">
+            <header className="h-16 flex-none border-b-2 border-black bg-white z-50 flex items-center justify-between px-4 relative">
                 {/* Left Section: Date & Navigation */}
                 <div className="flex items-center space-x-6">
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                            className="w-9 h-9 flex items-center justify-center border-2 border-black bg-white hover:bg-black hover:text-white brutal-transition focus:outline-none"
                             aria-label="Toggle Sidebar"
                         >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="miter">
+                                <rect x="3" y="3" width="18" height="18" rx="0" ry="0" />
                                 <line x1="9" y1="3" x2="9" y2="21" />
                             </svg>
                         </button>
                         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setCurrentView('month')}>
-                            <h1 className="text-xl font-bold tracking-tight text-white hidden md:block">
+                            <h1 className="text-xl font-bold tracking-tight text-black hidden md:block uppercase">
                                 {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                             </h1>
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-1">
-                        <button onClick={() => handleDateNav('prev')} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors">
+                    <div className="flex items-center space-x-2">
+                        <button onClick={() => handleDateNav('prev')} className="w-9 h-9 flex items-center justify-center border-2 border-black bg-white hover:bg-black hover:text-white brutal-transition">
                             <span className="material-icons text-xl">chevron_left</span>
                         </button>
-                        <button onClick={() => handleDateNav('next')} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors">
+                        <button onClick={() => handleDateNav('next')} className="w-9 h-9 flex items-center justify-center border-2 border-black bg-white hover:bg-black hover:text-white brutal-transition">
                             <span className="material-icons text-xl">chevron_right</span>
                         </button>
                     </div>
@@ -372,13 +372,13 @@ export default function Home() {
                 <div className="flex items-center">
                     <button
                         onClick={() => setCurrentDate(new Date())}
-                        className="mr-4 px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                        className="mr-4 px-4 py-2 text-sm font-bold text-black border-2 border-black bg-white hover:bg-black hover:text-white brutal-transition uppercase"
                     >
                         Today
                     </button>
                     <img
                         alt="User"
-                        className="w-8 h-8 rounded-full border border-gray-700 cursor-pointer object-cover hover:border-gray-500 transition-colors"
+                        className="w-10 h-10 border-2 border-black cursor-pointer object-cover hover:scale-105 brutal-bounce"
                         src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2Nx-sIaN8vRXbzHj3sYwqql_Z62Zo5iPv6WLQ1F8UwxwcPmaULdNdyCSFy_6J3t48cndAiY_as21YB8kGM4Bpb8oa3eKqt2eygDwr9WIz2q-UsaQ5YAhs5dQrLGkWFi6Njyv4fL5sm3a1KX84Zeg30ObAxbIqk6Nu9UaL9tDzOp0RP_a7X5J8FUx-PyCG3THHFIx4-QxAk3LorTFSrSZUKE4FFO38qPSX50XHuI3y0vnZBQnVchYDYnYCzMRCjjSFZ1o4j6n5oq_G"
                     />
                 </div>
@@ -401,7 +401,7 @@ export default function Home() {
                 </AnimatePresence>
 
                 {/* View Area */}
-                <main className="flex-1 flex flex-col min-w-0 bg-background-dark relative overflow-hidden transition-all duration-300 ease-in-out">
+                <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden transition-all duration-300 ease-in-out">
                     <AnimatePresence mode="wait" initial={false}>
                         {renderView()}
                     </AnimatePresence>

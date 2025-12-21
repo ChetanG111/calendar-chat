@@ -55,21 +55,19 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
     useEffect(() => {
         if (isOpen) {
             setShouldRender(true);
-            // Small delay to trigger enter animation
             setTimeout(() => setIsAnimating(true), 10);
         } else {
             setIsAnimating(false);
-            // Wait for exit animation to complete before unmounting
             const timer = setTimeout(() => setShouldRender(false), 300);
             return () => clearTimeout(timer);
         }
     }, [isOpen]);
 
-    // Reset position and populate form when modal opens
+    // Reset position and populate form
     useEffect(() => {
         if (isOpen) {
             setIsDropdownOpen(false);
-            setPosition({ x: 0, y: 0 }); // Reset position on open
+            setPosition({ x: 0, y: 0 });
 
             if (event) {
                 setTitle(event.title);
@@ -80,66 +78,36 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 setEndTime(event.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
                 setIsAllDay(event.isAllDay || false);
             } else {
-                // Initial data or defaults
                 const data = initialData || {};
-
                 setTitle(data.title || '');
                 setDescription(data.description || '');
                 setLocation(data.location || '');
                 setEventType(data.type || 'personal');
-
-                // If initialData has start/end, use them
-                if (data.start) {
-                    setStartTime(data.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-                } else {
-                    setStartTime('10:00');
-                }
-
-                if (data.end) {
-                    setEndTime(data.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-                } else {
-                    setEndTime('10:45');
-                }
-
+                setStartTime(data.start ? data.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '10:00');
+                setEndTime(data.end ? data.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '10:45');
                 setIsAllDay(data.isAllDay || false);
             }
         }
     }, [event, isOpen, defaultDate, initialData]);
 
-    // Drag Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
-        // Prevent dragging when clicking buttons/inputs inside the header
-        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) {
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input') || (e.target as HTMLElement).closest('textarea')) {
             return;
         }
-
         setIsDragging(true);
-        dragStartRef.current = {
-            x: e.clientX - position.x,
-            y: e.clientY - position.y
-        };
+        dragStartRef.current = { x: e.clientX - position.x, y: e.clientY - position.y };
     };
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isDragging || !dragStartRef.current) return;
-
-            e.preventDefault(); // Prevent text selection
-            const newX = e.clientX - dragStartRef.current.x;
-            const newY = e.clientY - dragStartRef.current.y;
-
-            setPosition({ x: newX, y: newY });
+            setPosition({ x: e.clientX - dragStartRef.current.x, y: e.clientY - dragStartRef.current.y });
         };
-
-        const handleMouseUp = () => {
-            setIsDragging(false);
-        };
-
+        const handleMouseUp = () => setIsDragging(false);
         if (isDragging) {
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
         }
-
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
@@ -149,13 +117,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
     if (!shouldRender) return null;
 
     const handleSave = () => {
-        // Basic date construction logic
         const baseDate = event ? event.start : (defaultDate || new Date());
-
-        // If all day, we might want to just keep the date part, but for now we keep the time logic or set meaningful defaults?
-        // Usually all day events start at 00:00 or ignore time.
-        // Let's rely on date part of baseDate
-
         let start = new Date(baseDate);
         let end = new Date(baseDate);
 
@@ -167,201 +129,128 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
             const [endH, endM] = endTime.split(':').map(Number);
             start.setHours(startH, startM);
             end.setHours(endH, endM);
-
-            // Handle overnight events briefly (simple check)
-            if (end < start) {
-                end.setDate(end.getDate() + 1);
-            }
+            if (end < start) end.setDate(end.getDate() + 1);
         }
 
-        onSave({
-            title: title || '(No title)',
-            start,
-            end,
-            description,
-            location,
-            type: eventType,
-            isAllDay: isAllDay
-        });
-
+        onSave({ title: title || '(No title)', start, end, description, location, type: eventType, isAllDay: isAllDay });
         onClose();
     };
 
     return (
-        <div
-            className={`fixed inset-0 z-[60] flex items-center justify-center transition-all duration-300 ease-out ${isAnimating ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 backdrop-blur-none'}`}
-            onClick={onClose}
-        >
+        <>
             <div
-                onClick={(e) => e.stopPropagation()}
-                style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
-                className="transition-transform duration-0 ease-linear"
+                className={`fixed inset-0 bg-black/60 z-40 transition-opacity duration-300 ${!isOpen ? 'opacity-0' : 'opacity-100'}`}
+                onClick={onClose}
+            />
+            <div
+                className={`fixed inset-0 z-[50] flex items-center justify-center transition-all duration-300 ease-out ${isAnimating ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                onClick={onClose}
             >
                 <div
-                    className={`w-[500px] bg-[#202124] rounded-xl shadow-2xl border border-zinc-700 font-sans flex flex-col transition-all duration-300 ease-out ${isAnimating ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-4'}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+                    className="transition-transform duration-0 ease-linear"
                 >
-
-                    {/* Header / Drag Handle */}
-                    <div
-                        onMouseDown={handleMouseDown}
-                        className="flex items-center justify-between px-4 py-2 bg-[#202124] rounded-t-xl cursor-move border-b border-white/5 select-none"
-                    >
-                        <div className="flex items-center gap-1 text-sm text-[#9aa0a6] px-2 py-1.5 rounded select-none">
-                            <span className="material-symbols-outlined text-[20px]">event</span>
-                            <span className="font-medium">{event ? 'Edit Event' : 'Event'}</span>
-                        </div>
-                        <div className="flex items-center">
-                            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-[#303134] rounded-full transition-colors">
+                    <div className={`w-[520px] bg-surface-overlay rounded-2xl shadow-premium-lg border border-border font-sans flex flex-col transition-all duration-400 ease-[cubic-bezier(0.175,0.885,0.32,1.1)] ${isAnimating ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-4'}`}>
+                        <div onMouseDown={handleMouseDown} className="flex items-center justify-between px-6 py-4 bg-canvas/30 rounded-t-2xl cursor-move border-b border-border select-none">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-fg-subtle uppercase tracking-widest px-2 py-1 select-none">
+                                <span className="material-symbols-outlined text-[18px]">event</span>
+                                <span>{event ? 'Edit Event' : 'Create Event'}</span>
+                            </div>
+                            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-fg-muted hover:text-foreground hover:bg-white/5 rounded-lg transition-colors">
                                 <span className="material-symbols-outlined text-[20px]">close</span>
                             </button>
                         </div>
-                    </div>
 
-                    {/* Content */}
-                    <div className="px-8 pb-8 pt-4 flex flex-col gap-5 max-h-[85vh] overflow-y-auto custom-scrollbar">
-
-                        {/* Title Input */}
-                        <div className="ml-10">
-                            <input
-                                autoFocus
-                                className="w-full bg-transparent focus:bg-[#303134]/50 border-0 px-2 py-1.5 rounded-md text-[20px] text-[#e8eaed] focus:ring-0 placeholder-[#9aa0a6] font-normal leading-tight transition-all duration-200 outline-none"
-                                placeholder="Title"
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                            />
-                        </div>
-
-                        {/* Date & Time */}
-                        <div className="flex gap-5 items-start">
-                            <div className="w-6 flex justify-center mt-1">
-                                <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">schedule</span>
+                        <div className="px-8 pb-8 pt-4 flex flex-col gap-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                            <div className="px-1">
+                                <input
+                                    autoFocus
+                                    className="w-full bg-transparent border-0 px-2 py-2 text-3xl font-bold tracking-tight text-foreground placeholder-white/10 transition-all duration-200 outline-none"
+                                    placeholder="Event Title"
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                />
                             </div>
-                            <div className="flex-1 flex flex-col gap-2">
-                                <div className="flex items-center gap-3 text-[#e8eaed] text-sm">
+
+                            <div className="flex gap-5 items-start">
+                                <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-center flex-shrink-0">
+                                    <span className="material-symbols-outlined text-fg-muted text-[22px]">schedule</span>
+                                </div>
+                                <div className="flex-1 flex flex-col gap-4 pt-1">
                                     {!isAllDay && (
-                                        <>
-                                            <div className="relative">
-                                                <TimePicker
-                                                    value={startTime}
-                                                    onChange={setStartTime}
-                                                />
-                                            </div>
-                                            <span className="text-[#9aa0a6] text-sm flex items-center pt-1">→</span>
-                                            <div className="relative">
-                                                <TimePicker
-                                                    value={endTime}
-                                                    onChange={setEndTime}
-                                                />
-                                            </div>
-                                        </>
+                                        <div className="flex items-center gap-3">
+                                            <TimePicker value={startTime} onChange={setStartTime} />
+                                            <span className="text-fg-subtle opacity-30 font-bold">\u2192</span>
+                                            <TimePicker value={endTime} onChange={setEndTime} />
+                                        </div>
                                     )}
-                                </div>
-                                <div className="flex items-center px-0 py-1 rounded w-fit">
-                                    <span className="text-sm font-medium text-[#e8eaed]">
-                                        {(event ? event.start : (defaultDate || new Date())).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}
-                                    </span>
-                                </div>
-                                <div className="flex gap-4 mt-1 text-xs text-[#9aa0a6]">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAllDay(!isAllDay)}
-                                        className={`px-2 py-1 -ml-2 rounded transition-colors text-left font-medium ${isAllDay ? 'bg-blue-500/20 text-blue-200' : 'hover:bg-[#303134] text-[#9aa0a6]'}`}
-                                    >
-                                        All-day
-                                    </button>
-                                    {!isAllDay && (
-                                        <button className="hover:bg-[#303134] px-2 py-1 rounded transition-colors text-left font-medium">Time zone</button>
-                                    )}
-                                    <button className="hover:bg-[#303134] px-2 py-1 rounded transition-colors text-left font-medium">Repeat</button>
+                                    <div className="text-sm font-bold text-fg-muted uppercase tracking-wider">
+                                        {(event ? event.start : (defaultDate || new Date())).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setIsAllDay(!isAllDay)} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${isAllDay ? 'bg-accent text-white shadow-premium-sm ring-1 ring-accent/20' : 'bg-white/[0.03] hover:bg-white/5 text-fg-muted border border-white/5'}`}>All-day</button>
+                                        <button className="bg-white/[0.03] hover:bg-white/5 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-fg-muted border border-white/5 transition-all">Repeat</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Description */}
-                        <div className="flex gap-5 items-start">
-                            <div className="w-6 flex justify-center mt-1">
-                                <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">segment</span>
+                            <div className="flex gap-5 items-start">
+                                <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-center flex-shrink-0">
+                                    <span className="material-symbols-outlined text-fg-muted text-[22px]">segment</span>
+                                </div>
+                                <div className="flex-1">
+                                    <textarea
+                                        className="w-full bg-canvas/30 border border-border focus:border-white/20 focus:bg-canvas/50 rounded-2xl px-5 py-4 text-sm font-medium text-foreground placeholder-white/10 resize-none transition-all duration-300 outline-none leading-relaxed"
+                                        placeholder="Add description..."
+                                        rows={4}
+                                        value={description}
+                                        onChange={e => setDescription(e.target.value)}
+                                    ></textarea>
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <textarea
-                                    className="w-full bg-[#303134]/20 focus:bg-[#303134]/60 border border-zinc-700/30 hover:border-zinc-600/60 rounded-lg px-4 py-3 text-sm text-[#e8eaed] placeholder-[#9aa0a6]/70 focus:ring-0 resize-none transition-all duration-200 outline-none"
-                                    placeholder="Description"
-                                    rows={4}
-                                    value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                ></textarea>
-                            </div>
-                        </div>
 
-                        {/* Calendar Select / Options */}
-                        <div className="flex gap-5 items-start pt-4 mt-2 border-t border-[#3c4043]">
-                            <div className="w-6 flex justify-center mt-1">
-                                <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">calendar_today</span>
-                            </div>
-                            <div className="flex-1 flex flex-col gap-3">
-                                <div className="relative" ref={dropdownRef}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        className="flex items-center gap-2 hover:bg-[#303134] px-3 py-1.5 -ml-3 rounded transition-colors group/cal cursor-pointer outline-none w-full text-left"
-                                    >
-                                        <div className={`w-3.5 h-3.5 rounded-full ${eventType === 'business' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
-                                            eventType === 'personal' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
-                                                eventType === 'meetings' ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
-                                                    'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]'
-                                            }`}></div>
-                                        <span className="text-[#e8eaed] text-sm font-medium">
-                                            {eventType === 'personal' ? 'Leslie Alexander' :
-                                                eventType.charAt(0).toUpperCase() + eventType.slice(1)}
+                            <div className="flex gap-5 items-start pt-6 border-t border-border mt-2">
+                                <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-center flex-shrink-0">
+                                    <span className="material-symbols-outlined text-fg-muted text-[22px]">category</span>
+                                </div>
+                                <div className="flex-1 relative" ref={dropdownRef}>
+                                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-3 bg-white/[0.03] hover:bg-white/5 border border-white/5 px-5 py-3 rounded-2xl transition-all w-full text-left group">
+                                        <div className={`w-3.5 h-3.5 rounded-full ring-2 ring-background ${eventType === 'business' ? 'bg-accent' : eventType === 'personal' ? 'bg-rose-500' : eventType === 'meetings' ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+                                        <span className="text-foreground text-sm font-bold uppercase tracking-widest flex-1">
+                                            {eventType === 'personal' ? 'Leslie Alexander' : eventType}
                                         </span>
-                                        <span className={`material-symbols-outlined text-[#9aa0a6] text-[20px] transition-transform duration-200 ml-auto ${isDropdownOpen ? 'rotate-180' : ''}`}>
-                                            arrow_drop_down
-                                        </span>
+                                        <span className={`material-symbols-outlined text-fg-subtle text-[20px] transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`}>expand_more</span>
                                     </button>
 
-                                    {/* Dropdown Menu */}
                                     {isDropdownOpen && (
-                                        <div className="absolute bottom-full left-0 mb-1 w-56 bg-[#202124] border border-[#5f6368] rounded-lg shadow-xl z-[70] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 origin-bottom-left">
+                                        <div className="absolute bottom-full left-0 mb-3 w-72 bg-surface-overlay border border-border rounded-2xl shadow-premium-lg z-[70] overflow-hidden p-2 animate-spring-in origin-bottom-left">
                                             {[
-                                                { id: 'personal', label: 'Leslie Alexander', color: 'bg-red-500' },
-                                                { id: 'business', label: 'Business', color: 'bg-blue-500' },
-                                                { id: 'meetings', label: 'Meetings', color: 'bg-orange-500' },
-                                                { id: 'holiday', label: 'Holiday', color: 'bg-green-500' }
+                                                { id: 'personal', label: 'Leslie Alexander', color: 'bg-rose-500' },
+                                                { id: 'business', label: 'Business', color: 'bg-accent' },
+                                                { id: 'meetings', label: 'Meetings', color: 'bg-amber-500' },
+                                                { id: 'holiday', label: 'Holiday', color: 'bg-emerald-500' }
                                             ].map((option) => (
-                                                <button
-                                                    key={option.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setEventType(option.id as any);
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                    className={`w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm transition-colors
-                                                        ${eventType === option.id ? 'bg-[#1967d2] text-white' : 'text-[#e8eaed] hover:bg-[#3c4043]'}
-                                                    `}
-                                                >
-                                                    <div className={`w-2.5 h-2.5 rounded-full ${option.color} ${eventType === option.id ? 'ring-2 ring-white/50' : ''}`}></div>
-                                                    <span className="flex-1 truncate">{option.label}</span>
-                                                    {eventType === option.id && (
-                                                        <span className="material-symbols-outlined text-[18px]">check</span>
-                                                    )}
+                                                <button key={option.id} onClick={() => { setEventType(option.id as any); setIsDropdownOpen(false); }} className={`w-full text-left px-4 py-3.5 flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest transition-all rounded-xl ${eventType === option.id ? 'bg-white/5 text-foreground' : 'text-fg-muted hover:bg-white/[0.02] hover:text-foreground'}`}>
+                                                    <div className={`w-2.5 h-2.5 rounded-full ${option.color} ring-2 ring-background`}></div>
+                                                    {option.label}
                                                 </button>
                                             ))}
                                         </div>
                                     )}
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Footer Actions */}
-                        <div className="flex justify-end pt-6 gap-3">
-                            <button onClick={onClose} className="px-5 py-2.5 rounded text-sm font-medium text-[#e8eaed] hover:bg-[#303134] transition-colors">Cancel</button>
-                            <button onClick={handleSave} className="px-8 py-2.5 rounded text-sm font-medium bg-primary text-white hover:brightness-110 transition-colors shadow-lg shadow-emerald-900/20 font-semibold tracking-wide">Save</button>
+                            <div className="flex justify-end pt-8 gap-4 border-t border-border mt-4">
+                                <button onClick={onClose} className="px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest text-fg-muted hover:text-foreground hover:bg-white/5 transition-all">Cancel</button>
+                                <button onClick={handleSave} className="px-10 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-foreground text-background hover:bg-white transition-all shadow-premium-md">Save Event</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

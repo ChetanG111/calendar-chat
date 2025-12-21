@@ -70,53 +70,56 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
                 type="button"
                 onClick={toggleOpen}
                 className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded transition-all border
-                    ${isOpen ? 'bg-[#3c4043] border-blue-500 text-blue-400 shadow-[0_0_0_2px_rgba(59,130,246,0.2)]' : 'bg-[#303134] border-[#5f6368] text-[#e8eaed] hover:bg-[#3c4043]'}
+                    flex items-center gap-3 px-3 py-2 rounded-xl transition-all border
+                    ${isOpen ? 'bg-white/5 border-white/20 text-foreground' : 'bg-white/[0.03] border-white/5 text-fg-muted hover:bg-white/5 hover:text-foreground'}
                 `}
             >
-                <span className="text-sm font-medium tracking-wide">
-                    {displayHours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}
-                </span>
-                <span className="text-xs font-semibold text-[#9aa0a6] uppercase">{period}</span>
+                <div className="flex items-center gap-1.5 font-bold tracking-tight">
+                    <span className="text-sm">
+                        {displayHours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}
+                    </span>
+                    <span className="text-[10px] uppercase opacity-50">{period}</span>
+                </div>
+                <span className={`material-symbols-outlined text-[18px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 z-50 flex flex-col bg-[#202124]/95 backdrop-blur-xl border border-zinc-700 shadow-2xl rounded-xl overflow-hidden w-[280px] animate-in fade-in zoom-in-95 duration-200 origin-top-left ring-1 ring-white/10">
+                <div className="absolute top-full left-0 mt-3 z-50 flex flex-col bg-surface-overlay border border-border shadow-premium-lg rounded-2xl overflow-hidden w-[280px] animate-spring-in origin-top-left">
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-white/5 bg-[#28292c]/50">
-                        <div className="flex-1 text-center py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Hrs</div>
-                        <div className="flex-1 text-center py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-l border-white/5">Min</div>
-                        <div className="flex-1 text-center py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-l border-white/5">AM/PM</div>
+                    <div className="flex items-center justify-between border-b border-border bg-canvas/30 p-1">
+                        <div className="flex-1 text-center py-2 text-[9px] font-bold text-fg-subtle uppercase tracking-[0.2em]">Hrs</div>
+                        <div className="flex-1 text-center py-2 text-[9px] font-bold text-fg-subtle uppercase tracking-[0.2em] border-l border-border">Min</div>
+                        <div className="flex-1 text-center py-2 text-[9px] font-bold text-fg-subtle uppercase tracking-[0.2em] border-l border-border">Prd</div>
                     </div>
 
                     <div className="flex h-56">
                         {/* Hours Column */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth py-1">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar scroll-smooth py-2">
                             {hours.map(h => (
                                 <button
                                     key={h}
                                     ref={displayHours === h ? hoursRef : null}
                                     onClick={() => handleHourChange(h)}
-                                    className={`w-full py-1.5 text-sm transition-colors ${displayHours === h
-                                            ? 'bg-blue-500/20 text-blue-400 font-semibold'
-                                            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200 font-medium'
+                                    className={`w-full py-2 text-xs font-bold transition-all ${displayHours === h
+                                        ? 'text-accent'
+                                        : 'text-fg-muted hover:bg-white/[0.02] hover:text-foreground'
                                         }`}
                                 >
-                                    {h}
+                                    {h.toString().padStart(2, '0')}
                                 </button>
                             ))}
                         </div>
 
                         {/* Minutes Column */}
-                        <div className="flex-1 border-l border-white/5 overflow-y-auto custom-scrollbar scroll-smooth py-1">
+                        <div className="flex-1 border-l border-border overflow-y-auto custom-scrollbar scroll-smooth py-2">
                             {minutesList.map(m => (
                                 <button
                                     key={m}
                                     ref={minutes === m ? minutesRef : null}
                                     onClick={() => handleMinuteChange(m)}
-                                    className={`w-full py-1.5 text-sm transition-colors ${minutes === m
-                                            ? 'bg-blue-500/20 text-blue-400 font-semibold'
-                                            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200 font-medium'
+                                    className={`w-full py-2 text-xs font-bold transition-all ${minutes === m
+                                        ? 'text-accent'
+                                        : 'text-fg-muted hover:bg-white/[0.02] hover:text-foreground'
                                         }`}
                                 >
                                     {m.toString().padStart(2, '0')}
@@ -125,15 +128,15 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
                         </div>
 
                         {/* Period Column */}
-                        <div className="flex-1 border-l border-white/5 bg-[#28292c]/30 flex flex-col justify-center gap-1 p-1">
+                        <div className="flex-1 border-l border-border bg-canvas/20 flex flex-col justify-center gap-2 p-2">
                             {['AM', 'PM'].map(p => (
                                 <button
                                     key={p}
                                     ref={period === p ? periodRef : null}
                                     onClick={() => handlePeriodChange(p as 'AM' | 'PM')}
-                                    className={`w-full py-2 text-xs font-bold rounded transition-all ${period === p
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                                            : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+                                    className={`w-full py-3 text-[10px] font-bold rounded-xl transition-all border ${period === p
+                                        ? 'bg-foreground text-background border-foreground shadow-premium-sm'
+                                        : 'text-fg-muted hover:bg-white/5 hover:text-foreground border-transparent'
                                         }`}
                                 >
                                     {p}

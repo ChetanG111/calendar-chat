@@ -40,17 +40,32 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDate, onDateChange }) => {
   }
 
   return (
-    <aside className="w-64 flex flex-col border-r border-border-dark bg-surface-dark overflow-y-auto flex-shrink-0">
-      <div className="p-4">
+    <aside className="w-64 flex flex-col border-r-2 border-black bg-white overflow-y-auto flex-shrink-0">
+      <div className="p-6">
+        {/* Month Picker Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-sm font-bold text-black uppercase tracking-tight">
+            {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentDate)}
+          </h2>
+          <div className="flex gap-1">
+            <button className="p-1 border-2 border-black hover:bg-black hover:text-white brutal-transition">
+              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+            <button className="p-1 border-2 border-black hover:bg-black hover:text-white brutal-transition">
+              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
         {/* Days Header */}
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
+        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-fg-muted uppercase tracking-widest mb-3">
           <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1 text-center text-sm mb-6">
+        <div className="grid grid-cols-7 gap-1 text-center text-sm mb-8">
           {prevMonthFiller.map((day) => (
-            <span key={`prev-${day}`} className="p-1 text-zinc-600">{day}</span>
+            <span key={`prev-${day}`} className="p-1 text-fg-subtle/50 font-medium">{day}</span>
           ))}
 
           {currentDays.map((day) => {
@@ -60,9 +75,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDate, onDateChange }) => {
               <button
                 key={`curr-${day}`}
                 onClick={() => onDateChange(new Date(year, month, day))}
-                className={`p-1 rounded-full w-8 h-8 flex items-center justify-center mx-auto transition-colors
-                  ${selected ? 'bg-primary text-white' : 'hover:bg-zinc-800 text-gray-300'}
-                  ${today && !selected ? 'text-primary font-bold' : ''}
+                className={`p-1 w-8 h-8 flex items-center justify-center mx-auto brutal-transition font-bold border-2
+                  ${selected
+                    ? 'bg-black text-white border-black'
+                    : today
+                      ? 'text-black border-black bg-white'
+                      : 'border-transparent hover:border-black text-fg-muted hover:text-black'
+                  }
                 `}
               >
                 {day}
@@ -71,23 +90,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentDate, onDateChange }) => {
           })}
 
           {nextMonthFiller.map((day) => (
-            <span key={`next-${day}`} className="p-1 text-zinc-600">{day}</span>
+            <span key={`next-${day}`} className="p-1 text-fg-subtle/50 font-medium">{day}</span>
           ))}
         </div>
 
         {/* Calendars List */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">My Calendars</h3>
-            <span className="material-icons text-gray-500 text-sm cursor-pointer hover:text-white">add</span>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center px-1 border-b-2 border-black pb-3">
+            <h3 className="text-[11px] font-bold text-black uppercase tracking-[0.15em]">My Calendars</h3>
+            <button className="material-symbols-outlined text-black text-[20px] hover:scale-110 brutal-bounce">add</button>
           </div>
           <div className="space-y-2">
             {CALENDAR_CATEGORIES.map((cat) => (
-              <div key={cat.id} className="flex items-center space-x-3 cursor-pointer group">
-                <div className={`w-4 h-4 rounded border border-gray-600 ${cat.color} flex items-center justify-center`}>
-                  <span className="material-icons text-white text-[10px]">check</span>
-                </div>
-                <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{cat.label}</span>
+              <div key={cat.id} className="flex items-center space-x-3 px-3 py-2 border-2 border-transparent cursor-pointer group hover:border-black brutal-transition">
+                <div className={`w-3 h-3 border-2 border-black ${cat.color}`} />
+                <span className="text-sm font-bold text-fg-muted group-hover:text-black brutal-transition">{cat.label}</span>
               </div>
             ))}
           </div>

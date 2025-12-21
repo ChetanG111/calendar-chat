@@ -9,27 +9,67 @@ const config: Config = {
     ],
     safelist: [
         // Event theme colors - blue (business)
-        'bg-blue-500/20', 'bg-blue-500/30', 'border-blue-500', 'text-blue-100', 'bg-blue-500', 'hover:bg-blue-500/30',
+        'bg-blue-600', 'border-blue-600', 'text-blue-900', 'hover:bg-blue-700',
         // Event theme colors - red (personal)
-        'bg-red-500/20', 'bg-red-500/30', 'border-red-500', 'text-red-100', 'bg-red-500', 'hover:bg-red-500/30',
+        'bg-red-600', 'border-red-600', 'text-red-900', 'hover:bg-red-700',
         // Event theme colors - orange (meetings)
-        'bg-orange-500/20', 'bg-orange-500/30', 'border-orange-500', 'text-orange-100', 'bg-orange-500', 'hover:bg-orange-500/30',
+        'bg-orange-600', 'border-orange-600', 'text-orange-900', 'hover:bg-orange-700',
         // Event theme colors - green (holiday)
-        'bg-green-500/20', 'bg-green-500/30', 'border-green-500', 'text-green-100', 'bg-green-500', 'hover:bg-green-500/30',
+        'bg-green-600', 'border-green-600', 'text-green-900', 'hover:bg-green-700',
     ],
     theme: {
         extend: {
             colors: {
-                primary: "#34d399", // Emerald-400
-                secondary: "#3b82f6", // Blue-500
-                "background-dark": "#09090b", // Zinc-950
-                "surface-dark": "#18181b", // Zinc-900
-                "surface-hover": "#27272a", // Zinc-800
-                "border-dark": "#27272a", // Zinc-800
-                "grid-line": "#27272a",
+                // Neo-brutalist Base
+                background: "#f5f5f0",
+                foreground: "#1a1a1a",
+                surface: "#ffffff",
+                accent: {
+                    DEFAULT: "#2d2d2d",
+                    hover: "#1a1a1a",
+                },
+
+                // Borders - Strong and visible
+                border: "#1a1a1a",
+                "border-strong": "#000000",
+
+                // Typography
+                "fg-muted": "#666666",
+                "fg-subtle": "#999999",
+
+                // Legacy mappings for compatibility
+                canvas: "#ffffff",
+                "surface-raised": "#ffffff",
+                "surface-overlay": "#ffffff",
+                "surface-dark": "#ffffff",
+                "surface-hover": "#f0f0eb",
+                "background-dark": "#f5f5f0",
+                "border-dark": "#1a1a1a",
+                "border-subtle": "#333333",
+                "grid-line": "#d0d0cc",
+                primary: "#2d2d2d",
             },
             fontFamily: {
-                sans: ["Inter", "sans-serif"],
+                sans: ["Inter", "system-ui", "sans-serif"],
+            },
+            boxShadow: {
+                'brutal': '4px 4px 0 0 #1a1a1a',
+                'brutal-sm': '2px 2px 0 0 #1a1a1a',
+                'brutal-lg': '6px 6px 0 0 #1a1a1a',
+            },
+            animation: {
+                'bounce-in': 'bounceIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                'slide-in': 'slideIn 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+            },
+            keyframes: {
+                bounceIn: {
+                    '0%': { transform: 'scale(0.98)' },
+                    '100%': { transform: 'scale(1)' },
+                },
+                slideIn: {
+                    '0%': { opacity: '0', transform: 'translateY(-4px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
             },
         },
     },
