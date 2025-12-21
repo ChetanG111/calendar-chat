@@ -320,16 +320,19 @@ export default function Home() {
             />
 
             {/* Event Summary Popover - Read Only / Quick Actions */}
-            {selectedEvent && selectedEventRect && selectedContainerRect && (
-                <EventSummaryPopover
-                    event={selectedEvent}
-                    anchorRect={selectedEventRect}
-                    containerRect={selectedContainerRect}
-                    onClose={() => { setSelectedEventRect(null); setSelectedContainerRect(null); setSelectedEvent(undefined); }}
-                    onEdit={handleEditFromPopover}
-                    onDelete={handleDeleteEvent}
-                />
-            )}
+            <AnimatePresence>
+                {selectedEvent && selectedEventRect && selectedContainerRect && (
+                    <EventSummaryPopover
+                        key="event-summary-popover"
+                        event={selectedEvent}
+                        anchorRect={selectedEventRect}
+                        containerRect={selectedContainerRect}
+                        onClose={() => { setSelectedEventRect(null); setSelectedContainerRect(null); setSelectedEvent(undefined); }}
+                        onEdit={handleEditFromPopover}
+                        onDelete={handleDeleteEvent}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* Global Header - Flex Item, not fixed */}
             <header className="h-16 flex-none border-b border-border-dark bg-surface-dark z-50 flex items-center justify-between px-4 relative">
@@ -372,7 +375,7 @@ export default function Home() {
                 <div className="flex items-center">
                     <button
                         onClick={() => setCurrentDate(new Date())}
-                        className="mr-4 px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                        className="mr-4 px-4 py-2 text-sm font-medium text-white hover:scale-125 transition-transform active:scale-95"
                     >
                         Today
                     </button>

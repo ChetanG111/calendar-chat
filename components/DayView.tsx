@@ -110,7 +110,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
                       onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
                     }
                   }}
-                  className={`p - 1 rounded border - l - 2 text - xs font - medium truncate cursor - pointer z - 10 transition - all shadow - sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover} `}
+                  className={`p-2 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
                 >
                   {e.title}
                 </div>
@@ -180,7 +180,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
                         onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
                       }
                     }}
-                    className={`absolute ${event.end >= new Date() ? 'border-l-4' : ''} rounded - md px - 3 py - 2 flex justify - between items - start shadow - sm cursor - pointer transition - all group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover} `}
+                    className={`absolute ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md pl-4 pr-4 py-2 flex justify-between items-start shadow-sm cursor-pointer transition-all group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
                     style={{
                       top: `${top}px`,
                       height: `${durationMinutes}px`,

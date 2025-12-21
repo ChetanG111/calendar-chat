@@ -123,7 +123,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                           onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
                         }
                       }}
-                      className={`m-1 p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover}`}
+                      className={`m-1 p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
                     >
                       {e.title}
                     </div>
@@ -193,7 +193,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                             onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
                           }
                         }}
-                        className={`absolute z-10 p-1 ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-text shadow-sm transition-all overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text}`} ${theme.hover}`}
+                        className={`absolute z-10 px-2 py-1 ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-text shadow-sm transition-all overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
                         style={{
                           top: `${startMin}px`,
                           height: `${duration}px`,

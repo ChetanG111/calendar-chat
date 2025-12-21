@@ -88,7 +88,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
                           onEventClick?.(ev, e.currentTarget.getBoundingClientRect(), containerRect);
                         }
                       }}
-                      className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors ${ev.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.hover}`}`}
+                      className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors ${ev.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.hover}`} `}
                     >
                       <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></div>
                       <span className="text-xs font-medium text-gray-400 truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
