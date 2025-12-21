@@ -135,13 +135,13 @@ const ChatView: React.FC<ChatViewProps> = ({ onViewChange, onNavigateToday }) =>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className={clsx(
-                "w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200",
+                "w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200",
                 isMenuOpen
                   ? "text-white rotate-45"
                   : "text-gray-400 hover:text-white"
               )}
             >
-              <span className="material-symbols-outlined text-[20px]">add</span>
+              <span className="material-symbols-outlined text-[24px]">add</span>
             </button>
           </div>
 
@@ -155,9 +155,6 @@ const ChatView: React.FC<ChatViewProps> = ({ onViewChange, onNavigateToday }) =>
 
           {/* Right Buttons */}
           <div className="flex items-center gap-2 mr-1 flex-shrink-0">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-white/10 transition-colors">
-              <span className="material-symbols-outlined text-[20px]">mic</span>
-            </button>
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white hover:brightness-110 transition-colors">
               <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
             </button>
