@@ -1,97 +1,342 @@
 "use client";
 
-import React from 'react';
-import { ViewType } from '@/types';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ViewType, CalendarEvent } from '@/types';
 import { clsx } from "clsx";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  intent?: string;
+  event?: CalendarEvent;
+  events?: CalendarEvent[];
+  isLoading?: boolean;
+}
 
 interface ChatViewProps {
   onViewChange?: (view: ViewType) => void;
   onNavigateToday?: () => void;
+  onEventCreated?: (event: CalendarEvent) => void;
+  onEventUpdated?: (event: CalendarEvent) => void;
+  onEventDeleted?: (event: CalendarEvent) => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ onViewChange, onNavigateToday }) => {
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+// ============================================================================
+// Chat API Client
+// ============================================================================
+
+async function sendChatMessage(message: string, conversationId: string): Promise<{
+  message: string;
+  intent: string;
+  intentId?: string;
+  event?: CalendarEvent;
+  events?: CalendarEvent[];
+  conversationId: string;
+}> {
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      conversationId,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      currentTime: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to send message');
+  }
+
+  return response.json();
+}
+
+// ============================================================================
+// Message Components
+// ============================================================================
+
+function UserMessage({ content }: { content: string }) {
+  return (
+    <div className="flex justify-end">
+      <div className="bg-surface-dark text-gray-100 px-5 py-3 rounded-2xl rounded-tr-sm max-w-[80%] border border-border-dark">
+        {content}
+      </div>
+      <div className="ml-3 mt-1 w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-black flex-shrink-0">
+        U
+      </div>
+    </div>
+  );
+}
+
+function AssistantMessage({ message }: { message: ChatMessage }) {
+  const isSuccess = message.content.startsWith('✅');
+  const isError = message.content.startsWith('❌');
+
+  return (
+    <div className="flex items-start gap-4">
+      <div className="mt-1 w-8 h-8 rounded-full bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0">
+        {message.isLoading ? (
+          <span className="material-symbols-outlined text-gray-400 text-sm animate-spin">progress_activity</span>
+        ) : (
+          <span className="material-symbols-outlined text-gray-400 text-sm">smart_toy</span>
+        )}
+      </div>
+
+      <div className="space-y-3 w-full max-w-[85%]">
+        {message.isLoading ? (
+          <div className="flex items-center gap-2 text-gray-400">
+            <span className="text-sm">Thinking...</span>
+          </div>
+        ) : (
+          <>
+            <div className={clsx(
+              "text-gray-200 whitespace-pre-wrap",
+              isSuccess && "text-green-300",
+              isError && "text-red-300"
+            )}>
+              {message.content}
+            </div>
+
+            {/* Show event card if one was created/updated */}
+            {message.event && (
+              <EventCard event={message.event} intent={message.intent} />
+            )}
+
+            {/* Show list of events if query result */}
+            {message.events && message.events.length > 0 && message.intent === 'queried' && (
+              <div className="space-y-2 mt-2">
+                {message.events.map((event, index) => (
+                  <EventCard key={event.id || index} event={event} compact />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EventCard({ event, intent, compact }: { event: CalendarEvent; intent?: string; compact?: boolean }) {
+  const formatTime = (date: Date) => {
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const typeColors = {
+    business: 'border-blue-500 bg-blue-500/10',
+    personal: 'border-red-500 bg-red-500/10',
+    meetings: 'border-orange-500 bg-orange-500/10',
+    holiday: 'border-green-500 bg-green-500/10',
+  };
+
+  return (
+    <div className={clsx(
+      "rounded-lg border-l-4 p-3",
+      typeColors[event.type] || typeColors.personal,
+      compact ? 'bg-surface-dark/50' : 'bg-surface-dark'
+    )}>
+      <div className="flex items-start justify-between">
+        <div>
+          <h4 className="font-medium text-white">{event.title}</h4>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {event.isAllDay ? (
+              formatDate(event.start)
+            ) : (
+              `${formatTime(event.start)} - ${formatTime(event.end)}, ${formatDate(event.start)}`
+            )}
+          </p>
+        </div>
+        {event.rrule && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300">
+            Recurring
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+const ChatView: React.FC<ChatViewProps> = ({
+  onViewChange,
+  onNavigateToday,
+  onEventCreated,
+  onEventUpdated,
+  onEventDeleted,
+}) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [conversationId] = useState(() => crypto.randomUUID());
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Auto-resize textarea
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+  }, []);
+
+  // Send message
+  const handleSend = useCallback(async () => {
+    const trimmed = inputValue.trim();
+    if (!trimmed || isLoading) return;
+
+    // Add user message
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: trimmed,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+
+    // Add loading placeholder
+    const loadingId = crypto.randomUUID();
+    setMessages(prev => [...prev, {
+      id: loadingId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isLoading: true,
+    }]);
+
+    try {
+      const response = await sendChatMessage(trimmed, conversationId);
+
+      // Replace loading with actual response
+      setMessages(prev => prev.map(msg =>
+        msg.id === loadingId
+          ? {
+            id: loadingId,
+            role: 'assistant' as const,
+            content: response.message,
+            timestamp: new Date(),
+            intent: response.intent,
+            event: response.event,
+            events: response.events,
+          }
+          : msg
+      ));
+
+      // Trigger callbacks based on intent
+      if (response.intent === 'created' && response.event && onEventCreated) {
+        onEventCreated(response.event);
+      } else if (response.intent === 'updated' && response.event && onEventUpdated) {
+        onEventUpdated(response.event);
+      } else if (response.intent === 'deleted' && response.event && onEventDeleted) {
+        onEventDeleted(response.event);
+      }
+
+    } catch (error) {
+      // Replace loading with error
+      setMessages(prev => prev.map(msg =>
+        msg.id === loadingId
+          ? {
+            id: loadingId,
+            role: 'assistant' as const,
+            content: `❌ ${error instanceof Error ? error.message : 'Something went wrong'}`,
+            timestamp: new Date(),
+          }
+          : msg
+      ));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [inputValue, isLoading, conversationId, onEventCreated, onEventUpdated, onEventDeleted]);
+
+  // Handle Enter key
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
 
   return (
     <div className="flex flex-col h-full bg-background-dark relative overflow-hidden">
       {/* Chat Content Area */}
       <div className="flex-grow overflow-y-auto flex flex-col items-center pt-8 pb-32 px-4 custom-scrollbar">
-        <div className="w-full max-w-3xl space-y-8">
-
-          {/* User Message */}
-          <div className="flex justify-end">
-            <div className="bg-surface-dark text-gray-100 px-5 py-3 rounded-2xl rounded-tr-sm max-w-[80%] border border-border-dark">
-              Get a detailed project workflow for the new calendar onboarding.
-            </div>
-            <div className="ml-3 mt-1 w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-black flex-shrink-0">
-              JD
-            </div>
-          </div>
-
-          {/* AI Response Block */}
-          <div className="flex items-start gap-4">
-            <div className="mt-1 w-8 h-8 rounded-full bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-gray-400 text-sm">smart_toy</span>
-            </div>
-
-            <div className="space-y-4 w-full">
-              {/* Thought Process Accordion (Mock) */}
-              <div className="space-y-2">
-                <button className="flex items-center gap-2 text-gray-500 text-sm hover:text-gray-300 transition-colors">
-                  <span className="material-symbols-outlined text-sm">lightbulb</span>
-                  <span>Thinking Process</span>
-                  <span className="material-symbols-outlined text-sm">expand_more</span>
-                </button>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span className="material-symbols-outlined text-sm">visibility</span>
-                  <span>Viewed</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
-                    <span className="material-symbols-outlined text-[10px]">videocam</span> Onboarding Demo
-                  </span>
-                </div>
+        <div className="w-full max-w-3xl space-y-6">
+          {messages.length === 0 ? (
+            // Empty state
+            <div className="flex flex-col items-center justify-center h-[50vh] text-center">
+              <div className="w-16 h-16 rounded-full bg-surface-dark border border-border-dark flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-gray-400 text-3xl">calendar_month</span>
               </div>
-
-              {/* Content */}
-              <div className="text-gray-200 space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 text-white">Shaping the AI Chat Experience</h3>
-                  <ul className="space-y-3 list-disc pl-4 marker:text-gray-500">
-                    <li className="leading-relaxed text-gray-300">
-                      During the session, the team presented the overall product vision focused on building a modern AI chat experience that feels intuitive.
-                      <span className="inline-flex align-middle items-center justify-center w-5 h-5 ml-2 rounded bg-surface-dark border border-border-dark text-[10px] text-gray-400 font-medium">N</span>
-                    </li>
-                    <li className="leading-relaxed text-gray-300">
-                      Key emphasis was placed on clarity of interaction, reducing cognitive load, and ensuring responses feel helpful.
-                    </li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 text-white">Key Takeaways</h3>
-                  <ol className="space-y-3 list-decimal pl-4 marker:text-gray-500 text-gray-300">
-                    <li className="pl-1">Scale from onboarding demos to advanced workflows.</li>
-                    <li className="pl-1">Primary interface for user interaction, prioritizing simplicity.</li>
-                  </ol>
-                </div>
-
-                {/* References */}
-                <div className="pt-2">
-                  <p className="text-xs font-medium text-gray-500 mb-2">12 results found</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors group border border-transparent hover:border-border-dark">
-                      <span className="material-symbols-outlined text-gray-400">article</span>
-                      <span className="text-sm text-blue-400 underline decoration-gray-700 underline-offset-4 group-hover:text-blue-300">Customer Feedback: Aggregated Insights</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors group border border-transparent hover:border-border-dark">
-                      <span className="material-symbols-outlined text-gray-400">analytics</span>
-                      <span className="text-sm text-blue-400 underline decoration-gray-700 underline-offset-4 group-hover:text-blue-300">Sales Performance Metrics</span>
-                    </div>
-                  </div>
-                </div>
-
+              <h2 className="text-xl font-semibold text-white mb-2">Calendar Assistant</h2>
+              <p className="text-gray-400 max-w-md">
+                Ask me to create events, find meetings, or manage your schedule.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-6 justify-center">
+                {[
+                  "Schedule a meeting tomorrow at 2pm",
+                  "What's on my calendar this week?",
+                  "Create a daily standup at 9am",
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => {
+                      setInputValue(suggestion);
+                      textareaRef.current?.focus();
+                    }}
+                    className="px-3 py-1.5 text-sm text-gray-300 bg-surface-dark border border-border-dark rounded-full hover:bg-white/5 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
+          ) : (
+            // Messages
+            messages.map((message) => (
+              message.role === 'user' ? (
+                <UserMessage key={message.id} content={message.content} />
+              ) : (
+                <AssistantMessage key={message.id} message={message} />
+              )
+            ))
+          )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 
@@ -147,15 +392,29 @@ const ChatView: React.FC<ChatViewProps> = ({ onViewChange, onNavigateToday }) =>
 
           {/* Textarea */}
           <textarea
+            ref={textareaRef}
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-white placeholder-gray-500 resize-none py-3 px-2 text-base"
             placeholder="Ask AI anything..."
             rows={1}
             style={{ minHeight: '44px', maxHeight: '120px' }}
+            disabled={isLoading}
           />
 
-          {/* Right Buttons */}
+          {/* Send Button */}
           <div className="flex items-center gap-2 mr-1 flex-shrink-0">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white hover:brightness-110 transition-colors">
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isLoading}
+              className={clsx(
+                "w-8 h-8 flex items-center justify-center rounded-full transition-colors",
+                inputValue.trim() && !isLoading
+                  ? "bg-primary text-white hover:brightness-110"
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              )}
+            >
               <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
             </button>
           </div>

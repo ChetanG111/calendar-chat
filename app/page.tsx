@@ -167,6 +167,9 @@ export default function Home() {
                                 setCurrentDate(new Date());
                                 setCurrentView('day');
                             }}
+                            onEventCreated={() => loadEvents()}
+                            onEventUpdated={() => loadEvents()}
+                            onEventDeleted={() => loadEvents()}
                         />
                     </motion.div>
                 );
