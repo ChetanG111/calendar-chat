@@ -31,6 +31,8 @@ export interface ParsedEventData {
     title?: string;
     startAt?: string;          // ISO 8601 WITHOUT offset
     endAt?: string;            // ISO 8601 WITHOUT offset
+    startDate?: string;        // YYYY-MM-DD format
+    endDate?: string;          // YYYY-MM-DD format
     timezone?: string;         // IANA timezone
     isAllDay?: boolean;
     rrule?: string;            // RFC 5545
@@ -79,6 +81,8 @@ export interface ValidatedEventData {
     title: string;
     startAt: Date;             // Converted to Date
     endAt: Date;               // Converted to Date
+    startDate: string;         // YYYY-MM-DD format
+    endDate: string;           // YYYY-MM-DD format
     timezone: string;
     isAllDay: boolean;
     rrule?: string;

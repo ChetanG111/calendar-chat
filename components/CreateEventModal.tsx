@@ -20,6 +20,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
     const [location, setLocation] = useState('');
     const [startTime, setStartTime] = useState('10:00');
     const [endTime, setEndTime] = useState('10:45');
+    const [startDate, setStartDate] = useState<string>(''); // YYYY-MM-DD
+    const [endDate, setEndDate] = useState<string>('');     // YYYY-MM-DD
     // Default to first calendar or personal or whatever is available
     const [eventType, setEventType] = useState<string>('personal');
     const [isAllDay, setIsAllDay] = useState(false);
@@ -80,10 +82,13 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 setEventType(event.type);
                 setStartTime(event.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
                 setEndTime(event.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+                setStartDate(event.startDate || event.start.toISOString().split('T')[0]);
+                setEndDate(event.endDate || event.end.toISOString().split('T')[0]);
                 setIsAllDay(event.isAllDay || false);
             } else {
                 // Initial data or defaults
                 const data = initialData || {};
+                const baseDate = defaultDate || new Date();
 
                 setTitle(data.title || '');
                 setDescription(data.description || '');
@@ -94,14 +99,18 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 // If initialData has start/end, use them
                 if (data.start) {
                     setStartTime(data.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+                    setStartDate(data.startDate || data.start.toISOString().split('T')[0]);
                 } else {
                     setStartTime('10:00');
+                    setStartDate(baseDate.toISOString().split('T')[0]);
                 }
 
                 if (data.end) {
                     setEndTime(data.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+                    setEndDate(data.endDate || data.end.toISOString().split('T')[0]);
                 } else {
                     setEndTime('10:45');
+                    setEndDate(baseDate.toISOString().split('T')[0]);
                 }
 
                 setIsAllDay(data.isAllDay || false);
@@ -152,11 +161,12 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
     if (!shouldRender) return null;
 
     const handleSave = () => {
-        // Basic date construction logic
-        const baseDate = event ? event.start : (defaultDate || new Date());
+        // Use startDate or fall back to baseDate
+        const baseStartDate = startDate ? new Date(startDate) : (event ? event.start : (defaultDate || new Date()));
+        const baseEndDate = endDate ? new Date(endDate) : baseStartDate;
 
-        let start = new Date(baseDate);
-        let end = new Date(baseDate);
+        let start = new Date(baseStartDate);
+        let end = new Date(baseEndDate);
 
         if (isAllDay) {
             start.setHours(0, 0, 0, 0);
@@ -164,8 +174,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
         } else {
             const [startH, startM] = startTime.split(':').map(Number);
             const [endH, endM] = endTime.split(':').map(Number);
-            start.setHours(startH, startM);
-            end.setHours(endH, endM);
+            start.setHours(startH, startM, 0, 0);
+            end.setHours(endH, endM, 0, 0);
 
             // Handle overnight events briefly (simple check)
             if (end < start) {
@@ -177,6 +187,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
             title: title || '(No title)',
             start,
             end,
+            startDate: startDate || start.toISOString().split('T')[0],
+            endDate: endDate || end.toISOString().split('T')[0],
             description,
             location,
             type: eventType,
@@ -240,29 +252,49 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                                 <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">schedule</span>
                             </div>
                             <div className="flex-1 flex flex-col gap-2">
-                                <div className="flex items-center gap-3 text-[#e8eaed] text-sm">
-                                    {!isAllDay && (
-                                        <>
+                                <div className="flex flex-col gap-1 text-[#e8eaed] text-sm">
+                                    {/* Start Date/Time */}
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="bg-transparent text-[#e8eaed] text-sm border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 px-0 py-1 transition-colors w-[130px] font-medium"
+                                        />
+
+                                        {!isAllDay && (
                                             <div className="relative">
                                                 <TimePicker
                                                     value={startTime}
                                                     onChange={setStartTime}
                                                 />
                                             </div>
-                                            <span className="text-[#9aa0a6] text-sm flex items-center pt-1">→</span>
+                                        )}
+                                    </div>
+
+                                    {/* Arrow */}
+                                    <div className="flex items-center pl-[54px]"> {/* Align reasonably with date/time gap */}
+                                        <span className="material-symbols-outlined text-[#9aa0a6] text-[20px]">arrow_downward</span>
+                                    </div>
+
+                                    {/* End Date/Time */}
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            className="bg-transparent text-[#e8eaed] text-sm border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 px-0 py-1 transition-colors w-[130px] font-medium"
+                                        />
+
+                                        {!isAllDay && (
                                             <div className="relative">
                                                 <TimePicker
                                                     value={endTime}
                                                     onChange={setEndTime}
                                                 />
                                             </div>
-                                        </>
-                                    )}
-                                </div>
-                                <div className="flex items-center px-0 py-1 rounded w-fit">
-                                    <span className="text-sm font-medium text-[#e8eaed]">
-                                        {(event ? event.start : (defaultDate || new Date())).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}
-                                    </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex gap-4 mt-1 text-xs text-[#9aa0a6]">
                                     <button

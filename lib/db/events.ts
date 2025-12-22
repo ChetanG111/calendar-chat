@@ -59,6 +59,8 @@ function dbEventToStoredEvent(row: DbEvent): StoredEvent {
         description: row.description,
         startAt: new Date(row.start_at),
         endAt: new Date(row.end_at),
+        startDate: row.start_date,
+        endDate: row.end_date,
         timezone: row.timezone,
         isAllDay: row.is_all_day === 1,
         rrule: row.rrule,
@@ -81,12 +83,16 @@ export function createEvent(input: CreateEventInput): StoredEvent {
     const id = input.id || generateEventId();
     const now = toUtcString(new Date());
 
+    // Calculate date strings from startAt/endAt if not provided
+    const startDate = input.startDate || input.startAt.toISOString().split('T')[0];
+    const endDate = input.endDate || input.endAt.toISOString().split('T')[0];
+
     const stmt = db.prepare(`
     INSERT INTO events (
-      id, title, description, start_at, end_at, timezone,
+      id, title, description, start_at, end_at, start_date, end_date, timezone,
       is_all_day, rrule, exdates, metadata, created_at, updated_at
     ) VALUES (
-      @id, @title, @description, @start_at, @end_at, @timezone,
+      @id, @title, @description, @start_at, @end_at, @start_date, @end_date, @timezone,
       @is_all_day, @rrule, @exdates, @metadata, @created_at, @updated_at
     )
   `);
@@ -97,6 +103,8 @@ export function createEvent(input: CreateEventInput): StoredEvent {
         description: input.description || null,
         start_at: toUtcString(input.startAt),
         end_at: toUtcString(input.endAt),
+        start_date: startDate,
+        end_date: endDate,
         timezone: input.timezone,
         is_all_day: input.isAllDay ? 1 : 0,
         rrule: input.rrule || null,
@@ -163,10 +171,28 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
     if (input.startAt !== undefined) {
         updates.push('start_at = @start_at');
         params.start_at = toUtcString(input.startAt);
+        // Auto-update start_date if not explicitly provided
+        if (input.startDate === undefined) {
+            updates.push('start_date = @start_date');
+            params.start_date = input.startAt.toISOString().split('T')[0];
+        }
     }
     if (input.endAt !== undefined) {
         updates.push('end_at = @end_at');
         params.end_at = toUtcString(input.endAt);
+        // Auto-update end_date if not explicitly provided
+        if (input.endDate === undefined) {
+            updates.push('end_date = @end_date');
+            params.end_date = input.endAt.toISOString().split('T')[0];
+        }
+    }
+    if (input.startDate !== undefined) {
+        updates.push('start_date = @start_date');
+        params.start_date = input.startDate;
+    }
+    if (input.endDate !== undefined) {
+        updates.push('end_date = @end_date');
+        params.end_date = input.endDate;
     }
     if (input.timezone !== undefined) {
         updates.push('timezone = @timezone');
@@ -282,6 +308,8 @@ export function queryEventsInRange(options: EventQueryOptions): ExpandedEventIns
                 description: event.description,
                 startAt: event.startAt,
                 endAt: event.endAt,
+                startDate: event.startDate,
+                endDate: event.endDate,
                 timezone: event.timezone,
                 isAllDay: event.isAllDay,
                 isRecurring: !!event.rrule,

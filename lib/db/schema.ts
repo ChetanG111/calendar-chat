@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS events (
   description TEXT,
   start_at TEXT NOT NULL,
   end_at TEXT NOT NULL,
+  start_date TEXT,
+  end_date TEXT,
   timezone TEXT NOT NULL,
   is_all_day INTEGER DEFAULT 0,
   rrule TEXT,
@@ -46,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_events_end_at ON events(end_at)`;
  * All schema statements in order of execution
  */
 export const SCHEMA_STATEMENTS = [
-    CREATE_EVENTS_TABLE,
-    CREATE_START_AT_INDEX,
-    CREATE_END_AT_INDEX,
+  CREATE_EVENTS_TABLE,
+  CREATE_START_AT_INDEX,
+  CREATE_END_AT_INDEX,
 ];

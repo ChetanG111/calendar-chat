@@ -5,6 +5,8 @@ export interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
+  startDate?: string;  // YYYY-MM-DD format - the date portion of start
+  endDate?: string;    // YYYY-MM-DD format - the date portion of end
   type: string;
   description?: string;
   location?: string;

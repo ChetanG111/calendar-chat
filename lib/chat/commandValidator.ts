@@ -257,10 +257,19 @@ export class CommandValidator {
         }
 
         // Build validated command
+        const finalStartAt = startAt || new Date();
+        const finalEndAt = endAt;
+
+        // Derive startDate and endDate from the parsed timestamps, or use provided values
+        const startDate = event.startDate || finalStartAt.toISOString().split('T')[0];
+        const endDate = event.endDate || finalEndAt.toISOString().split('T')[0];
+
         const validatedEvent: ValidatedEventData = {
             title: event.title,
-            startAt: startAt || new Date(),
-            endAt,
+            startAt: finalStartAt,
+            endAt: finalEndAt,
+            startDate,
+            endDate,
             timezone: eventTimezone,
             isAllDay: event.isAllDay ?? false,
             rrule: event.rrule,
@@ -356,6 +365,10 @@ export class CommandValidator {
             endAt = parsed;
         }
 
+        // Derive startDate and endDate for updates
+        const updateStartDate = intent.event?.startDate || (startAt ? startAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+        const updateEndDate = intent.event?.endDate || (endAt ? endAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+
         return {
             valid: true,
             command: {
@@ -366,6 +379,8 @@ export class CommandValidator {
                     title: intent.event.title || '',
                     startAt: startAt || new Date(),
                     endAt: endAt || new Date(),
+                    startDate: updateStartDate,
+                    endDate: updateEndDate,
                     timezone: eventTimezone,
                     isAllDay: intent.event.isAllDay ?? false,
                     rrule: intent.event.rrule,

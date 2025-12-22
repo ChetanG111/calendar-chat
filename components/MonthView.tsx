@@ -83,7 +83,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
                   text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full
                   ${isToday ? 'bg-primary text-white' : (cell.type === 'current' ? 'text-gray-200' : 'text-gray-600')}
                 `}>
-                  {cell.day == 1 ? `${cell.day} ${cell.date.toLocaleString('default', { month: 'short' })}` : cell.day}
+                  {cell.day}
                 </span>
               </div>
 

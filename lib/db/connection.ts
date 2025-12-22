@@ -65,6 +65,21 @@ function initializeSchema(database: Database.Database): void {
         database.exec(statement);
     }
 
+    // Auto-migration for new columns (idempotent via try-catch)
+    try {
+        database.exec('ALTER TABLE events ADD COLUMN start_date TEXT');
+        console.log('[DB] Migrated: Added start_date column');
+    } catch (e: any) {
+        // Ignore if column exists
+    }
+
+    try {
+        database.exec('ALTER TABLE events ADD COLUMN end_date TEXT');
+        console.log('[DB] Migrated: Added end_date column');
+    } catch (e: any) {
+        // Ignore if column exists
+    }
+
     console.log('[DB] Schema initialization complete');
 }
 

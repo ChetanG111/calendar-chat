@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
             title: event.title,
             start: event.startAt.toISOString(),
             end: event.endAt.toISOString(),
+            startDate: event.startDate,
+            endDate: event.endDate,
             type: event.metadata?.type || 'personal',
             description: event.description,
             location: event.metadata?.location,
@@ -98,6 +100,8 @@ export async function POST(request: NextRequest) {
             title?: string;
             start?: string;
             end?: string;
+            startDate?: string;
+            endDate?: string;
             type?: 'business' | 'personal' | 'meetings' | 'holiday';
             description?: string;
             location?: string;
@@ -128,6 +132,8 @@ export async function POST(request: NextRequest) {
             description: body.description,
             startAt: new Date(body.start),
             endAt: new Date(body.end),
+            startDate: body.startDate,
+            endDate: body.endDate,
             timezone: body.timezone || DEFAULT_TIMEZONE,
             isAllDay: body.isAllDay || false,
             rrule: body.rrule,
@@ -143,6 +149,8 @@ export async function POST(request: NextRequest) {
             title: event.title,
             start: event.startAt.toISOString(),
             end: event.endAt.toISOString(),
+            startDate: event.startDate,
+            endDate: event.endDate,
             type: event.metadata?.type || 'personal',
             description: event.description,
             location: event.metadata?.location,

@@ -45,6 +45,8 @@ Schema:
     "title": "string (can be null if needs clarification)",
     "startAt": "ISO 8601 datetime WITHOUT offset (e.g., 2025-12-29T09:00)",
     "endAt": "ISO 8601 datetime WITHOUT offset (optional)",
+    "startDate": "YYYY-MM-DD format (the date portion of start, e.g., 2025-12-29)",
+    "endDate": "YYYY-MM-DD format (the date portion of end, for multi-day events)",
     "timezone": "IANA timezone (e.g., Asia/Kolkata)",
     "isAllDay": boolean,
     "rrule": "RFC 5545 RRULE string (optional, for recurring events)",
@@ -81,6 +83,8 @@ RULES:
 8. "search" reference type is for phrases like "meeting with design team", "standup"
 9. Generate exactly ONE clarificationQuestion if needed, never multiple
 10. Be conversational and helpful in clarificationQuestion
+11. For multi-day events (e.g., "vacation from Dec 25 to Dec 30"), set distinct startDate and endDate
+12. ALWAYS derive startDate from startAt and endDate from endAt (YYYY-MM-DD format)
 
 Current time: ${currentTime}
 Current timezone: ${timezone}
