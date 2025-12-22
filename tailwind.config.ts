@@ -8,14 +8,14 @@ const config: Config = {
         "./types.ts",
     ],
     safelist: [
-        // Event theme colors - blue (business)
-        'bg-blue-500/20', 'bg-blue-500/30', 'border-blue-500', 'text-blue-100', 'bg-blue-500', 'hover:bg-blue-500/30',
-        // Event theme colors - red (personal)
-        'bg-red-500/20', 'bg-red-500/30', 'border-red-500', 'text-red-100', 'bg-red-500', 'hover:bg-red-500/30',
-        // Event theme colors - orange (meetings)
-        'bg-orange-500/20', 'bg-orange-500/30', 'border-orange-500', 'text-orange-100', 'bg-orange-500', 'hover:bg-orange-500/30',
-        // Event theme colors - green (holiday)
-        'bg-green-500/20', 'bg-green-500/30', 'border-green-500', 'text-green-100', 'bg-green-500', 'hover:bg-green-500/30',
+        // Add all available calendar colors to the safelist
+        ...['blue', 'red', 'orange', 'green', 'purple', 'pink', 'yellow', 'cyan', 'gray', 'indigo'].flatMap(color => [
+            `bg-${color}-500/20`,
+            `hover:bg-${color}-500/30`,
+            `border-${color}-500`,
+            `text-${color}-100`,
+            `bg-${color}-500`,
+        ]),
     ],
     theme: {
     	extend: {

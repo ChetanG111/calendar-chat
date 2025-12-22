@@ -131,27 +131,27 @@ const CANCEL_PATTERNS = [
 
 const EXPANDED_CONFIRM_PATTERNS = [
     // Standard affirmatives
-    /^(yes|yep|yeah|yup|y|yea|yess|sure)$/i,
+    /^\s*(yes|yep|yeah|yup|y|yea|yess|sure)\b/i,
     // Action confirmations
-    /^(ok|okay|go ahead|do it|confirm|proceed|please|correct|right)$/i,
+    /^\s*(ok|okay|go ahead|do it|confirm|proceed|please|correct|right)\b/i,
     // Sounds good variants
-    /^(sounds? good|works? for me|perfect|great|fine)$/i,
+    /^\s*(sounds? good|works? for me|perfect|great|fine)\b/i,
     // Affirmative acknowledgments
-    /^(uh ?huh|mhm|absolutely|definitely)$/i,
+    /^\s*(uh ?huh|mhm|absolutely|definitely)\b/i,
     // "That's right" variants
-    /^(that'?s? (right|correct|it|the one))$/i,
+    /^\s*(that'?s? (right|correct|it|the one))\b/i,
 ];
 
 const EXPANDED_CANCEL_PATTERNS = [
     // Standard negatives
-    /^(no|nope|n|nah)$/i,
+    /^\s*(no|nope|n|nah)\b/i,
     // Cancel/abort actions
-    /^(cancel|stop|don'?t|abort|quit)$/i,
+    /^\s*(cancel|stop|don'?t|abort|quit)\b/i,
     // Never mind variants
-    /^(never ?mind|forget ?(it|that)?|wait|hold on)$/i,
+    /^\s*(never ?mind|forget ?(it|that)?|wait|hold on)\b/i,
     // Wrong selection
-    /^(not (that|this) one)$/i,
-    /^(wrong (one|event))$/i,
+    /^\s*(not (that|this) one)\b/i,
+    /^\s*(wrong (one|event))\b/i,
 ];
 
 // ============================================================================

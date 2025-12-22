@@ -108,6 +108,11 @@ export default function Home() {
     const handleUpdateCalendar = (id: string, updates: Partial<CalendarCategory>) => {
         setCalendars(calendars.map(cal => {
             if (cal.id === id) {
+                // Prevent renaming the default calendar
+                if (cal.isDefault && updates.label) {
+                    updates = { ...updates };
+                    delete updates.label;
+                }
                 const updatedCal = { ...cal, ...updates };
                 // If color changed, update theme
                 if (updates.colorName) {
@@ -120,9 +125,10 @@ export default function Home() {
     };
 
     const handleDeleteCalendar = (id: string) => {
+        const calendar = calendars.find(c => c.id === id);
+        if (calendar?.isDefault) return; // Prevent deleting default calendar
+
         setCalendars(calendars.filter(cal => cal.id !== id));
-        // You might want to update events associated with this calendar too, but for now we leave them
-        // or filter them out from view.
     };
 
     const toggleCalendarVisibility = (id: string) => {
@@ -230,6 +236,7 @@ export default function Home() {
                             onEventCreated={() => loadEvents()}
                             onEventUpdated={() => loadEvents()}
                             onEventDeleted={() => loadEvents()}
+                            calendars={calendars}
                         />
                     </motion.div>
                 );
@@ -294,9 +301,7 @@ export default function Home() {
     const handleDeleteEvent = async () => {
         if (selectedEvent) {
             try {
-                const eventId = selectedEvent.id.includes('_2')
-                    ? selectedEvent.id.split('_').slice(0, 3).join('_')
-                    : selectedEvent.id;
+                const eventId = selectedEvent.eventId || selectedEvent.id;
 
                 await deleteEventApi(eventId);
 
@@ -325,7 +330,7 @@ export default function Home() {
                     title: eventData.title || '(No Title)',
                     start: eventData.start || new Date(),
                     end: eventData.end || new Date(new Date().getTime() + 3600000),
-                    type: eventData.type || 'personal',
+                    type: eventData.type || 'default',
                     description: eventData.description,
                     location: eventData.location,
                     isAllDay: eventData.isAllDay,

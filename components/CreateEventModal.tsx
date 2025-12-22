@@ -23,7 +23,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
     const [startDate, setStartDate] = useState<string>(''); // YYYY-MM-DD
     const [endDate, setEndDate] = useState<string>('');     // YYYY-MM-DD
     // Default to first calendar or personal or whatever is available
-    const [eventType, setEventType] = useState<string>('personal');
+    const [eventType, setEventType] = useState<string>('default');
     const [isAllDay, setIsAllDay] = useState(false);
 
     // Dragging state
@@ -94,7 +94,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 setDescription(data.description || '');
                 setLocation(data.location || '');
                 // Default to a valid calendar ID or 'personal'
-                setEventType(data.type || (calendars.length > 0 ? calendars[0].id : 'personal'));
+                setEventType(data.type || (calendars.length > 0 ? (calendars.find(c => c.isDefault)?.id || calendars[0].id) : 'default'));
 
                 // If initialData has start/end, use them
                 if (data.start) {
@@ -162,8 +162,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
 
     const handleSave = () => {
         // Use startDate or fall back to baseDate
-        const baseStartDate = startDate ? new Date(startDate) : (event ? event.start : (defaultDate || new Date()));
-        const baseEndDate = endDate ? new Date(endDate) : baseStartDate;
+        const baseStartDate = startDate ? new Date(`${startDate}T00:00:00`) : (event ? event.start : (defaultDate || new Date()));
+        const baseEndDate = endDate ? new Date(`${endDate}T00:00:00`) : baseStartDate;
 
         let start = new Date(baseStartDate);
         let end = new Date(baseEndDate);

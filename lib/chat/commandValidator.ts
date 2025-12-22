@@ -27,14 +27,31 @@ import type { ExpandedEventInstance } from '@/lib/db/types';
  */
 function parseDateTime(dateTimeStr: string, timezone: string): Date | null {
     try {
-        // If it's just a time (e.g., "15:00"), return null - needs context
-        if (/^\d{2}:\d{2}(:\d{2})?$/.test(dateTimeStr)) {
-            return null;
+        if (!dateTimeStr) return null;
+
+        // If it already has an offset or Z, parse directly
+        if (dateTimeStr.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(dateTimeStr)) {
+            const d = new Date(dateTimeStr);
+            return isNaN(d.getTime()) ? null : d;
         }
 
-        // Parse as local time in the given timezone
-        // The dateTimeStr should be in format: 2025-12-29T09:00
-        const date = new Date(dateTimeStr);
+        // Otherwise, assume it's a local time string (e.g., 2025-12-23T14:00)
+        // We need to parse it in the target timezone
+        const datePart = dateTimeStr.includes('T') ? dateTimeStr : `${dateTimeStr}T00:00:00`;
+
+        // Use Intl to get the offset for this specific date in the given timezone
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            timeZoneName: 'longOffset',
+        });
+
+        // Format a temporary date to get the offset
+        const tempDate = new Date();
+        const parts = formatter.formatToParts(tempDate);
+        const offsetName = parts.find(p => p.type === 'timeZoneName')?.value || ''; // e.g. "GMT+05:30"
+        const offset = offsetName.replace('GMT', '').replace('UTC', '') || 'Z';
+
+        const date = new Date(datePart + (offset === '' ? 'Z' : offset));
 
         if (isNaN(date.getTime())) {
             return null;
@@ -49,13 +66,8 @@ function parseDateTime(dateTimeStr: string, timezone: string): Date | null {
 /**
  * Parse a date-only string
  */
-function parseDate(dateStr: string): Date | null {
-    try {
-        const date = new Date(dateStr + 'T00:00:00');
-        return isNaN(date.getTime()) ? null : date;
-    } catch {
-        return null;
-    }
+function parseDate(dateStr: string, timezone: string): Date | null {
+    return parseDateTime(dateStr, timezone);
 }
 
 // ============================================================================
@@ -65,6 +77,7 @@ function parseDate(dateStr: string): Date | null {
 interface ReferenceResolution {
     resolved: boolean;
     eventId?: string;
+    instanceDate?: string;
     candidates?: EventCandidate[];
     error?: string;
 }
@@ -74,27 +87,69 @@ interface ReferenceResolution {
  */
 async function resolveReference(
     reference: { type: string; value: string },
-    timezone: string
+    timezone: string,
+    currentTime: string,
+    criteria?: any
 ): Promise<ReferenceResolution> {
     // Direct ID reference
     if (reference.type === 'id') {
-        const event = getEventById(reference.value);
-        if (event) {
-            return { resolved: true, eventId: event.id };
+        const val = reference.value;
+
+        // Try exact match first
+        const directMatch = getEventById(val);
+        if (directMatch) {
+            console.log(`[Resolve] Direct match found for ${val}`);
+            return { resolved: true, eventId: directMatch.id };
         }
+
+        // If not found, check if it's an instance ID
+        if (val.startsWith('evt_') && val.includes('_')) {
+            const lastUnderscoreIndex = val.lastIndexOf('_');
+            if (lastUnderscoreIndex > 0) {
+                const baseId = val.substring(0, lastUnderscoreIndex);
+                const instancePart = val.substring(lastUnderscoreIndex + 1);
+
+                const event = getEventById(baseId);
+                if (event) {
+                    console.log(`[Resolve] Instance match found! Base: ${baseId}, Date: ${instancePart}`);
+                    return {
+                        resolved: true,
+                        eventId: baseId,
+                        instanceDate: instancePart
+                    };
+                }
+            }
+        }
+
+        console.warn(`[Resolve] ID ${val} not found in DB`);
         return { resolved: false, error: 'Event not found' };
     }
 
-    // Search-based reference
+    // Search-based or relative reference
     if (reference.type === 'search' || reference.type === 'relative') {
         const searchTerm = reference.value.toLowerCase();
 
-        // Search in a reasonable time range (past week to next month)
-        const now = new Date();
-        const rangeStart = new Date(now);
+        // Determine search range
+        const now = new Date(currentTime);
+        let rangeStart = new Date(now);
+        let rangeEnd = new Date(now);
         rangeStart.setDate(rangeStart.getDate() - 7);
-        const rangeEnd = new Date(now);
         rangeEnd.setMonth(rangeEnd.getMonth() + 1);
+
+        // If criteria provides a specific date/time, narrow the range
+        if (criteria?.startAt) {
+            const date = parseDateTime(criteria.startAt, timezone);
+            if (date) {
+                rangeStart = new Date(date.getTime() - 6 * 60 * 60 * 1000); // 6 hours before
+                rangeEnd = new Date(date.getTime() + 6 * 60 * 60 * 1000);   // 6 hours after
+            }
+        } else if (criteria?.startDate) {
+            const date = parseDate(criteria.startDate, timezone);
+            if (date) {
+                rangeStart = date;
+                rangeEnd = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+            }
+        }
 
         const events = queryEventsInRange({
             rangeStart,
@@ -102,24 +157,62 @@ async function resolveReference(
             expandRecurrence: true,
         });
 
-        // Filter by search term in title
-        const matches = events.filter(event =>
-            event.title.toLowerCase().includes(searchTerm)
-        );
+        // Filter by search term in title OR criteria title
+        const searchTitle = (criteria?.title?.toLowerCase() || searchTerm).trim();
+        const searchWords = searchTitle.split(/\s+/).filter(w => w.length > 2 && w !== 'event' && w !== 'meeting');
+
+        const matches = events.filter(event => {
+            const eventTitle = event.title.toLowerCase();
+
+            // Exact or substring match (bidirectional)
+            const titleMatch = eventTitle.includes(searchTitle) ||
+                searchTitle.includes(eventTitle) ||
+                searchTerm === 'meeting' || searchTerm === 'event';
+
+            // Keyword-based match (if all non-trivial words match, it's likely the same event)
+            const keywordMatch = searchWords.length > 0 &&
+                searchWords.every(word => eventTitle.includes(word));
+
+            const finalTitleMatch = titleMatch || keywordMatch;
+
+            // If we have a specific time in criteria, it's a stronger match
+            if (criteria?.startAt) {
+                const criteriaDate = parseDateTime(criteria.startAt, timezone);
+                if (criteriaDate) {
+                    const criteriaTime = criteriaDate.getTime();
+                    const eventTime = event.startAt.getTime();
+                    // Match within 1 minute
+                    if (Math.abs(criteriaTime - eventTime) < 60000) return true;
+
+                    // If time doesn't match but title does, still consider it if it's the only one 
+                    // that day (range filtering already handled the day)
+                    return finalTitleMatch;
+                }
+            }
+
+            return finalTitleMatch;
+        });
+
+        console.log(`[Resolve] Search for "${searchTitle}" in range returned ${matches.length} matches`);
 
         if (matches.length === 0) {
             return { resolved: false, error: 'No matching events found' };
         }
 
         if (matches.length === 1) {
-            return { resolved: true, eventId: matches[0].eventId };
+            const match = matches[0];
+            return {
+                resolved: true,
+                eventId: match.eventId,
+                instanceDate: match.isRecurring ? match.startAt.toISOString() : undefined
+            };
         }
 
         // Multiple matches - need clarification
         const candidates: EventCandidate[] = matches
             .slice(0, POLICIES.MAX_CANDIDATES)
             .map(event => ({
-                id: event.eventId,
+                id: event.instanceId,
                 title: event.title,
                 startAt: event.startAt.toISOString(),
                 isRecurring: event.isRecurring,
@@ -141,7 +234,8 @@ export class CommandValidator {
      */
     async validate(
         intent: ParsedIntent,
-        userTimezone: string
+        userTimezone: string,
+        currentTime: string
     ): Promise<ValidationResult> {
         // Check confidence threshold
         if (intent.confidence < POLICIES.CONFIDENCE_REJECT_THRESHOLD) {
@@ -165,11 +259,11 @@ export class CommandValidator {
         // Validate based on intent type
         switch (intent.intent) {
             case 'create':
-                return this.validateCreate(intent, userTimezone);
+                return this.validateCreate(intent, userTimezone, currentTime);
             case 'update':
-                return this.validateUpdate(intent, userTimezone);
+                return this.validateUpdate(intent, userTimezone, currentTime);
             case 'delete':
-                return this.validateDelete(intent, userTimezone);
+                return this.validateDelete(intent, userTimezone, currentTime);
             case 'query':
                 return this.validateQuery(intent);
             default:
@@ -188,8 +282,10 @@ export class CommandValidator {
      */
     private validateCreate(
         intent: ParsedIntent,
-        timezone: string
+        timezone: string,
+        currentTime: string
     ): ValidationResult {
+        const now = new Date(currentTime);
         const event = intent.event;
 
         // Check required fields
@@ -241,7 +337,7 @@ export class CommandValidator {
             // Apply default duration policy
             endAt = calculateDefaultEndAt(startAt);
         } else {
-            endAt = new Date(); // Will be overwritten for all-day events
+            endAt = now; // Will be overwritten for all-day events
         }
 
         // Validate duration
@@ -257,7 +353,7 @@ export class CommandValidator {
         }
 
         // Build validated command
-        const finalStartAt = startAt || new Date();
+        const finalStartAt = startAt || now;
         const finalEndAt = endAt;
 
         // Derive startDate and endDate from the parsed timestamps, or use provided values
@@ -292,8 +388,10 @@ export class CommandValidator {
      */
     private async validateUpdate(
         intent: ParsedIntent,
-        timezone: string
+        timezone: string,
+        currentTime: string
     ): Promise<ValidationResult> {
+        const now = new Date(currentTime);
         // Must have a reference to resolve
         if (!intent.reference) {
             return {
@@ -307,7 +405,7 @@ export class CommandValidator {
         }
 
         // Resolve the reference
-        const resolution = await resolveReference(intent.reference, timezone);
+        const resolution = await resolveReference(intent.reference, timezone, currentTime, intent.event);
 
         if (!resolution.resolved) {
             if (resolution.candidates) {
@@ -366,8 +464,8 @@ export class CommandValidator {
         }
 
         // Derive startDate and endDate for updates
-        const updateStartDate = intent.event?.startDate || (startAt ? startAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
-        const updateEndDate = intent.event?.endDate || (endAt ? endAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+        const updateStartDate = intent.event?.startDate || (startAt ? startAt.toISOString().split('T')[0] : now.toISOString().split('T')[0]);
+        const updateEndDate = intent.event?.endDate || (endAt ? endAt.toISOString().split('T')[0] : now.toISOString().split('T')[0]);
 
         return {
             valid: true,
@@ -377,8 +475,8 @@ export class CommandValidator {
                 targetEventId: resolution.eventId,
                 event: intent.event ? {
                     title: intent.event.title || '',
-                    startAt: startAt || new Date(),
-                    endAt: endAt || new Date(),
+                    startAt: startAt || now,
+                    endAt: endAt || now,
                     startDate: updateStartDate,
                     endDate: updateEndDate,
                     timezone: eventTimezone,
@@ -396,7 +494,8 @@ export class CommandValidator {
      */
     private async validateDelete(
         intent: ParsedIntent,
-        timezone: string
+        timezone: string,
+        currentTime: string
     ): Promise<ValidationResult> {
         // Must have a reference to resolve
         if (!intent.reference) {
@@ -411,7 +510,7 @@ export class CommandValidator {
         }
 
         // Resolve the reference
-        const resolution = await resolveReference(intent.reference, timezone);
+        const resolution = await resolveReference(intent.reference, timezone, currentTime, intent.event);
 
         if (!resolution.resolved) {
             if (resolution.candidates) {
@@ -443,7 +542,7 @@ export class CommandValidator {
                 intentId: intent.intentId,
                 intent: 'delete',
                 targetEventId: resolution.eventId,
-                instanceDate: intent.event?.instanceDate,
+                instanceDate: resolution.instanceDate || intent.event?.instanceDate,
             },
         };
     }

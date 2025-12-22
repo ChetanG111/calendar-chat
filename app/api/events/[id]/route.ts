@@ -43,8 +43,8 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
             title: event.title,
             start: event.startAt.toISOString(),
             end: event.endAt.toISOString(),
-            type: event.metadata?.type || 'personal',
-            description: event.description,
+            type: event.metadata?.type || 'default',
+            description: event.description || undefined,
             location: event.metadata?.location,
             guests: event.metadata?.guests,
             meetLink: event.metadata?.meetLink,
@@ -80,7 +80,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             timezone?: string;
             isAllDay?: boolean;
             rrule?: string;
-            type?: 'business' | 'personal' | 'meetings' | 'holiday';
+            type?: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
             location?: string;
             guests?: string[];
             meetLink?: string;
@@ -142,8 +142,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             title: event.title,
             start: event.startAt.toISOString(),
             end: event.endAt.toISOString(),
-            type: event.metadata?.type || 'personal',
-            description: event.description,
+            type: event.metadata?.type || 'default',
+            description: event.description || undefined,
             location: event.metadata?.location,
             guests: event.metadata?.guests,
             meetLink: event.metadata?.meetLink,

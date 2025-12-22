@@ -472,8 +472,21 @@ export class ClarificationManager {
 
         const intent = { ...activeIntent.intent };
 
+        // Merge any event data provided in the result
+        if (result.event) {
+            intent.event = {
+                ...intent.event,
+                ...result.event,
+            };
+        }
+
         if (field === 'reference') {
-            intent.reference = { type: 'id', value };
+            // Check if value is one of the candidate IDs
+            const isCandidateId = activeIntent.candidates?.some(c => c.id === value);
+            intent.reference = {
+                type: isCandidateId ? 'id' : 'search',
+                value
+            };
         } else if (field === 'title' || field === 'startAt' || field === 'endAt') {
             intent.event = {
                 ...intent.event,

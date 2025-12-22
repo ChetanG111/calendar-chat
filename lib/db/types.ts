@@ -29,7 +29,7 @@ export interface DbEvent {
  * Metadata stored in the JSON blob
  */
 export interface EventMetadata {
-    type?: 'business' | 'personal' | 'meetings' | 'holiday';
+    type?: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
     color?: string;
     tags?: string[];
     source?: string;

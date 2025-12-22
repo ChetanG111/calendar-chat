@@ -48,7 +48,8 @@ import {
     queryEventsInRange,
     getEventById,
 } from '@/lib/db';
-import type { StoredEvent, CreateEventInput, UpdateEventInput } from '@/lib/db/types';
+import type { StoredEvent, CreateEventInput, UpdateEventInput, ExpandedEventInstance } from '@/lib/db/types';
+import { storedEventToCalendarEvent, expandedEventToCalendarEvent } from '@/lib/mappers';
 
 // ============================================================================
 // Constants
@@ -56,29 +57,6 @@ import type { StoredEvent, CreateEventInput, UpdateEventInput } from '@/lib/db/t
 
 const MAX_LLM_CALLS_PER_ACTION = 3;
 const MAX_CLARIFICATION_ATTEMPTS = 2;
-
-// ============================================================================
-// Helper: Convert StoredEvent to CalendarEvent
-// ============================================================================
-
-function toCalendarEvent(stored: StoredEvent): CalendarEvent {
-    return {
-        id: stored.id,
-        title: stored.title,
-        start: stored.startAt,
-        end: stored.endAt,
-        startDate: stored.startDate || stored.startAt.toISOString().split('T')[0],
-        endDate: stored.endDate || stored.endAt.toISOString().split('T')[0],
-        type: stored.metadata.type || 'personal',
-        description: stored.description || undefined,
-        location: stored.metadata.location,
-        guests: stored.metadata.guests,
-        meetLink: stored.metadata.meetLink,
-        isAllDay: stored.isAllDay,
-        rrule: stored.rrule || undefined,
-        timezone: stored.timezone,
-    };
-}
 
 // ============================================================================
 // Helper: Create initial/default context
@@ -160,7 +138,7 @@ export class ChatController {
                     return this.handleSelectionPhase(message, updatedContext, timezone, currentTime, actionId);
 
                 case 'awaiting_confirmation':
-                    return this.handleConfirmationPhase(message, updatedContext, timezone, actionId);
+                    return this.handleConfirmationPhase(message, updatedContext, timezone, currentTime, actionId);
 
                 case 'confirming_intent_shift':
                     return this.handleIntentShiftConfirmation(message, updatedContext, timezone, currentTime, actionId);
@@ -238,7 +216,7 @@ export class ChatController {
         let updatedContext = this.addTurn(context, 'user', message);
 
         // Validate the parsed intent
-        const validationResult = await this.commandValidator.validate(parsedIntent, timezone);
+        const validationResult = await this.commandValidator.validate(parsedIntent, timezone, currentTime);
 
         if (!validationResult.valid) {
             if (validationResult.error) {
@@ -313,7 +291,7 @@ export class ChatController {
         switch (parseResult.type) {
             case 'answer':
             case 'correction':
-                return this.handleClarificationAnswer(parseResult, context, timezone, actionId);
+                return this.handleClarificationAnswer(parseResult, context, timezone, currentTime, actionId);
 
             case 'abort':
                 return {
@@ -380,6 +358,7 @@ export class ChatController {
         message: string,
         context: ConversationContext,
         timezone: string,
+        currentTime: string,
         actionId: string
     ): Promise<ChatResponse> {
         const activeIntent = context.activeIntent;
@@ -533,6 +512,7 @@ export class ChatController {
         parseResult: ClarificationParseResult,
         context: ConversationContext,
         timezone: string,
+        currentTime: string,
         actionId: string
     ): Promise<ChatResponse> {
         const activeIntent = context.activeIntent;
@@ -555,7 +535,7 @@ export class ChatController {
         }
 
         // Re-validate
-        const validationResult = await this.commandValidator.validate(mergedIntent, timezone);
+        const validationResult = await this.commandValidator.validate(mergedIntent, timezone, currentTime);
 
         if (!validationResult.valid) {
             if (validationResult.error) {
@@ -628,7 +608,7 @@ export class ChatController {
         switch (llmResult.type) {
             case 'answer':
             case 'correction':
-                return this.handleClarificationAnswer(llmResult, context, timezone, actionId);
+                return this.handleClarificationAnswer(llmResult, context, timezone, currentTime, actionId);
 
             case 'abort':
                 return {
@@ -715,12 +695,12 @@ export class ChatController {
             rrule: command.event.rrule,
             description: command.event.description,
             metadata: {
-                type: command.event.type,
+                type: command.event.type || 'default',
             },
         };
 
         const created = createEvent(input);
-        const calendarEvent = toCalendarEvent(created);
+        const calendarEvent = storedEventToCalendarEvent(created);
         const message = this.responseFormatter.formatCreated(calendarEvent);
 
         this.instrumentation.recordSuccess(actionId, 'created');
@@ -773,7 +753,7 @@ export class ChatController {
             };
         }
 
-        const calendarEvent = toCalendarEvent(updated);
+        const calendarEvent = storedEventToCalendarEvent(updated);
         const message = this.responseFormatter.formatUpdated(calendarEvent, Object.keys(updates));
 
         this.instrumentation.recordSuccess(actionId, 'updated');
@@ -812,26 +792,37 @@ export class ChatController {
             };
         }
 
-        const calendarEvent = toCalendarEvent(event);
+        const calendarEvent = storedEventToCalendarEvent(event);
         let message: string;
 
         // Handle recurring event instance deletion
+        let success = false;
         if (command.instanceDate && event.rrule) {
-            addExceptionDate(command.targetEventId, command.instanceDate);
-            message = this.responseFormatter.formatDeleted(calendarEvent, true);
+            console.log(`[Execute] Deleting recurring instance: ${command.targetEventId} on ${command.instanceDate}`);
+            const result = addExceptionDate(command.targetEventId, command.instanceDate);
+            success = !!result;
+            message = success
+                ? this.responseFormatter.formatDeleted(calendarEvent, true)
+                : this.responseFormatter.formatError("Failed to remove occurrence from series.");
         } else {
-            deleteEvent(command.targetEventId);
-            message = this.responseFormatter.formatDeleted(calendarEvent, false);
+            console.log(`[Execute] Deleting base event: ${command.targetEventId}`);
+            success = deleteEvent(command.targetEventId);
+            message = success
+                ? this.responseFormatter.formatDeleted(calendarEvent, false)
+                : this.responseFormatter.formatError("Event could not be deleted from database.");
         }
 
-        this.instrumentation.recordSuccess(actionId, 'deleted');
+        if (success) {
+            this.instrumentation.recordSuccess(actionId, 'deleted');
+        }
+
         const updatedContext = this.addTurn({ ...context, phase: 'idle' }, 'assistant', message);
 
         return {
             message,
-            intent: 'deleted',
+            intent: success ? 'deleted' : 'error',
             intentId: command.intentId,
-            event: calendarEvent,
+            event: success ? calendarEvent : undefined,
             updatedContext,
         };
     }
@@ -859,19 +850,7 @@ export class ChatController {
             events = events.filter(e => e.title.toLowerCase().includes(searchTerm));
         }
 
-        const calendarEvents = events.map(e => ({
-            id: e.instanceId,
-            title: e.title,
-            start: e.startAt,
-            end: e.endAt,
-            startDate: e.startDate || undefined,
-            endDate: e.endDate || undefined,
-            type: (e.metadata.type || 'personal') as 'business' | 'personal' | 'meetings' | 'holiday',
-            description: e.description || undefined,
-            isAllDay: e.isAllDay,
-            rrule: e.rrule || undefined,
-            timezone: e.timezone,
-        }));
+        const calendarEvents = events.map(e => expandedEventToCalendarEvent(e));
 
         const message = this.responseFormatter.formatQueryResult(calendarEvents);
         this.instrumentation.recordSuccess(actionId, 'queried');
@@ -904,7 +883,7 @@ export class ChatController {
             };
         }
 
-        const calendarEvent = toCalendarEvent(event);
+        const calendarEvent = storedEventToCalendarEvent(event);
         const instanceOnly = !!command.instanceDate && !!event.rrule;
         const message = this.responseFormatter.formatConfirmationRequest(action, calendarEvent, instanceOnly);
 
@@ -970,7 +949,8 @@ export class ChatController {
                 if (confirmed === true && context.pendingClarification.partialIntent) {
                     const validationResult = await this.commandValidator.validate(
                         context.pendingClarification.partialIntent,
-                        timezone
+                        timezone,
+                        currentTime
                     );
 
                     if (validationResult.valid && validationResult.command) {

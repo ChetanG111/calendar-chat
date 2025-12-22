@@ -2,6 +2,7 @@ export type ViewType = 'day' | 'week' | 'month' | 'chat';
 
 export interface CalendarEvent {
   id: string;
+  eventId?: string;
   title: string;
   start: Date;
   end: Date;
@@ -34,6 +35,7 @@ export interface CalendarCategory {
   theme: CalendarTheme;
   icon: string;
   checked: boolean;
+  isDefault?: boolean;
 }
 
 export const THEME_COLORS: Record<string, CalendarTheme> = {
@@ -54,10 +56,9 @@ export const getThemeForColor = (color: string): CalendarTheme => {
 };
 
 export const DEFAULT_CALENDARS: CalendarCategory[] = [
-  { id: 'business', label: 'Business', colorName: 'blue', theme: THEME_COLORS.blue, icon: 'check', checked: true },
+  { id: 'default', label: 'Default', colorName: 'blue', theme: THEME_COLORS.blue, icon: 'check', checked: true, isDefault: true },
+  { id: 'business', label: 'Business', colorName: 'indigo', theme: THEME_COLORS.indigo, icon: 'check', checked: true },
   { id: 'personal', label: 'Personal', colorName: 'red', theme: THEME_COLORS.red, icon: 'check', checked: true },
-  { id: 'meetings', label: 'Meetings', colorName: 'orange', theme: THEME_COLORS.orange, icon: 'check', checked: true },
-  { id: 'holidays', label: 'Holidays', colorName: 'green', theme: THEME_COLORS.green, icon: 'check', checked: true },
 ];
 
 export const MOCK_EVENTS: CalendarEvent[] = [
@@ -66,7 +67,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     title: 'Design Sprint (Day 3)',
     start: new Date(2025, 11, 16, 9, 0), // Dec 16 2025
     end: new Date(2025, 11, 16, 17, 0),
-    type: 'business',
+    type: 'default',
     isAllDay: true
   },
   {
@@ -81,14 +82,14 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     title: 'Whop App 1',
     start: new Date(2025, 11, 15, 18, 15),
     end: new Date(2025, 11, 15, 19, 0),
-    type: 'meetings'
+    type: 'business'
   },
   {
     id: '4',
     title: 'Agent OS Setup',
     start: new Date(2025, 11, 19, 18, 45),
     end: new Date(2025, 11, 19, 20, 0),
-    type: 'meetings'
+    type: 'business'
   },
   {
     id: '5',
@@ -102,7 +103,7 @@ export const MOCK_EVENTS: CalendarEvent[] = [
     title: 'Create NotebookLM Summaries',
     start: new Date(2025, 11, 19, 10, 0),
     end: new Date(2025, 11, 19, 10, 45),
-    type: 'personal'
+    type: 'default'
   },
   {
     id: '7',

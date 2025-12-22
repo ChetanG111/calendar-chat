@@ -37,6 +37,7 @@ interface ApiEvent {
 function toCalendarEvent(apiEvent: ApiEvent): CalendarEvent {
     return {
         id: apiEvent.id,
+        eventId: apiEvent.eventId,
         title: apiEvent.title,
         start: new Date(apiEvent.start),
         end: new Date(apiEvent.end),

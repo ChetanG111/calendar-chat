@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { CalendarCategory, getThemeForColor } from '@/types';
 import { motion, AnimatePresence, LayoutGroup, Variants } from 'framer-motion';
 
@@ -125,8 +125,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const colorMenuRef = useRef<HTMLDivElement>(null);
   const [hoveredCalendarId, setHoveredCalendarId] = useState<string | null>(null);
 
-  // Compute used colors
-  const usedColors = new Set(calendars.map(c => c.colorName));
+  // Compute used colors reactively
+  const usedColors = useMemo(() => new Set(calendars.map(c => c.colorName)), [calendars]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -290,8 +290,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                       ) : (
                         <span
                           onClick={() => onToggleCalendar(cat.id)}
-                          onDoubleClick={() => { setEditingId(cat.id); setEditName(cat.label); }}
-                          className="text-sm text-gray-300 transition-colors truncate select-none flex-1"
+                          onDoubleClick={() => {
+                            if (!cat.isDefault) {
+                              setEditingId(cat.id);
+                              setEditName(cat.label);
+                            }
+                          }}
+                          className={`text-sm text-gray-300 transition-colors truncate select-none flex-1 ${cat.isDefault ? 'font-medium cursor-default' : 'cursor-pointer'}`}
                         >
                           {cat.label}
                         </span>
@@ -306,19 +311,40 @@ const Sidebar: React.FC<SidebarProps> = ({
                         whileTap={{ scale: 0.9 }}
                         onClick={(e) => { e.stopPropagation(); setOpenColorMenuId(cat.id); }}
                         className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white transition-colors"
+                        title="Change color"
                       >
                         <span className="material-icons text-[16px]">palette</span>
                       </motion.button>
+                      
+                      {!cat.isDefault && (
+                        <motion.button
+                          layout
+                          whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingId(cat.id);
+                            setEditName(cat.label);
+                          }}
+                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white transition-colors"
+                          title="Rename calendar"
+                        >
+                          <span className="material-icons text-[16px]">edit</span>
+                        </motion.button>
+                      )}
 
-                      <motion.button
-                        layout
-                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,68,68,0.15)" }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => { e.stopPropagation(); onDeleteCalendar(cat.id); }}
-                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-400 transition-colors"
-                      >
-                        <span className="material-icons text-[16px]">delete</span>
-                      </motion.button>
+                      {!cat.isDefault && (
+                        <motion.button
+                          layout
+                          whileHover={{ scale: 1.1, backgroundColor: "rgba(255,68,68,0.15)" }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => { e.stopPropagation(); onDeleteCalendar(cat.id); }}
+                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-400 transition-colors"
+                          title="Delete calendar"
+                        >
+                          <span className="material-icons text-[16px]">delete</span>
+                        </motion.button>
+                      )}
                     </div>
 
                     {/* Color Picker Dropdown */}
@@ -335,29 +361,33 @@ const Sidebar: React.FC<SidebarProps> = ({
                         >
                           <div className="grid grid-cols-5 gap-2">
                             {AVAILABLE_COLORS.map(color => {
-                              const isUsed = usedColors.has(color) && cat.colorName !== color;
+                              // A color is "used" if ANOTHER calendar has it.
+                              // This allows the current calendar to keep its own color while blocking others.
+                              const usingCalendar = calendars.find(c => c.colorName === color && c.id !== cat.id);
+                              const isUsedByOther = !!usingCalendar;
                               const isSelected = cat.colorName === color;
 
                               return (
                                 <motion.button
                                   key={color}
                                   variants={colorItemVariants}
-                                  whileHover={!isUsed ? { scale: 1.2, zIndex: 10 } : {}}
-                                  whileTap={!isUsed ? { scale: 0.8 } : {}}
+                                  whileHover={!isUsedByOther ? { scale: 1.2, zIndex: 10 } : {}}
+                                  whileTap={!isUsedByOther ? { scale: 0.8 } : {}}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!isUsed) {
+                                    if (!isUsedByOther) {
                                       onUpdateCalendar(cat.id, { colorName: color });
                                       setOpenColorMenuId(null);
                                     }
                                   }}
+                                  title={isUsedByOther ? `Used by ${usingCalendar?.label}` : color}
                                   className={`relative w-6 h-6 rounded-full flex items-center justify-center transition-all
                                     ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-[#1e1e1e]' : ''}
-                                    ${isUsed ? 'opacity-20 cursor-not-allowed grayscale' : 'cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-white/20'}
+                                    ${isUsedByOther ? 'opacity-20 cursor-not-allowed grayscale' : 'cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-white/20'}
                                   `}
                                 >
                                   <div className={`w-full h-full rounded-full bg-${color}-500 shadow-sm`}></div>
-                                  {isUsed && (
+                                  {isUsedByOther && (
                                     <div className="absolute inset-0 flex items-center justify-center">
                                       <span className="material-icons text-[10px] text-white/50">block</span>
                                     </div>

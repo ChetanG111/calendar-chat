@@ -37,7 +37,7 @@ export interface ParsedEventData {
     isAllDay?: boolean;
     rrule?: string;            // RFC 5545
     description?: string;
-    type?: 'business' | 'personal' | 'meetings' | 'holiday';
+    type?: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
     instanceDate?: string;     // For recurring event instance operations
 }
 
@@ -87,7 +87,7 @@ export interface ValidatedEventData {
     isAllDay: boolean;
     rrule?: string;
     description?: string;
-    type: 'business' | 'personal' | 'meetings' | 'holiday';
+    type: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
 }
 
 export interface ValidationError {
@@ -222,6 +222,8 @@ export interface ClarificationParseResult {
     confusionReason?: string;
     /** The corrected field (if type === 'correction') */
     correctedField?: string;
+    /** Extracted event data if any (e.g. if user provides time during reference clarification) */
+    event?: ParsedEventData;
 }
 
 // ============================================================================
@@ -270,7 +272,7 @@ export interface ConfirmationRequest {
 
 export interface CalendarPolicies {
     DEFAULT_DURATION_MINUTES: number;
-    DEFAULT_EVENT_TYPE: 'business' | 'personal' | 'meetings' | 'holiday';
+    DEFAULT_EVENT_TYPE: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
     MAX_CANDIDATES: number;
     MIN_DURATION_MINUTES: number;
     MAX_CLARIFICATIONS: number;

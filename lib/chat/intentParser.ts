@@ -22,7 +22,7 @@ import { queryEventsInRange } from '@/lib/db';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 const MAX_CONTEXT_TURNS = 5;
-const MAX_CONTEXT_EVENTS = 5;
+const MAX_CONTEXT_EVENTS = 20;
 const MAX_RETRIES = 2;
 
 // ============================================================================
@@ -51,7 +51,7 @@ Schema:
     "isAllDay": boolean,
     "rrule": "RFC 5545 RRULE string (optional, for recurring events)",
     "description": "string (optional)",
-    "type": "business" | "personal" | "meetings" | "holiday",
+    "type": "business" | "personal" | "meetings" | "holiday" | "default",
     "instanceDate": "YYYY-MM-DD (only for operations on specific recurring instance)"
   } | null,
   "query": {
@@ -97,9 +97,9 @@ ${eventsSummary || 'No recent events'}`;
 // Event Context Provider
 // ============================================================================
 
-function getRecentEventsSummary(timezone: string): string {
+function getRecentEventsSummary(timezone: string, currentTime: string): string {
     try {
-        const now = new Date();
+        const now = new Date(currentTime);
         const rangeStart = new Date(now);
         rangeStart.setDate(rangeStart.getDate() - 7);
         const rangeEnd = new Date(now);
@@ -115,9 +115,11 @@ function getRecentEventsSummary(timezone: string): string {
             return 'No events in the past/upcoming week.';
         }
 
-        // Take last MAX_CONTEXT_EVENTS events, summarized
-        const summary = events
-            .slice(0, MAX_CONTEXT_EVENTS)
+        // prioritize events near "now"
+        const pastEvents = events.filter(e => e.startAt < now).slice(-5); // Last 5 past events
+        const futureEvents = events.filter(e => e.startAt >= now).slice(0, 15); // Next 15 future events
+
+        const summary = [...pastEvents, ...futureEvents]
             .map(e => {
                 const date = new Date(e.startAt).toLocaleDateString('en-US', {
                     weekday: 'short',
@@ -128,7 +130,8 @@ function getRecentEventsSummary(timezone: string): string {
                     hour: 'numeric',
                     minute: '2-digit',
                 });
-                return `- "${e.title}" on ${date} at ${time}`;
+                const recurring = e.isRecurring ? ' (recurring)' : '';
+                return `- [${e.instanceId}] "${e.title}" on ${date} at ${time}${recurring}`;
             })
             .join('\n');
 
@@ -175,7 +178,7 @@ export class IntentParser {
         actionId?: string
     ): Promise<ParsedIntent> {
         const aid = actionId || generateUUID();
-        const eventsSummary = getRecentEventsSummary(timezone);
+        const eventsSummary = getRecentEventsSummary(timezone, currentTime);
         const systemPrompt = buildSystemPrompt(currentTime, timezone, eventsSummary);
 
         // Build messages array with expanded context (5 turns)
@@ -413,16 +416,23 @@ RESPOND IN JSON ONLY:
   "answerField": "${awaitingField}" | null,
   "answerValue": "the extracted value" | null,
   "selectedId": "candidate id if selecting from list" | null,
-  "confusionReason": "why unclear" | null
+  "confusionReason": "why unclear" | null,
+  "event": {
+    "title": "string",
+    "startAt": "ISO datetime without offset",
+    "isAllDay": boolean
+  } | null
 }
 
 RULES:
 1. If user is answering the question, extract the value as "answer"
-2. If user says "actually...", "wait...", "cancel...", "never mind", it's "intent_shift" or "abort"
-3. If user says "no, [correct value]" or "not X, Y", it's a "correction"
-4. If referring to a candidate like "the one with [keyword]", match to a candidate and return "answer" with selectedId
-5. For time expressions, convert to natural description (e.g., "3pm tomorrow")
-6. If you can't understand, return "unclear" with a helpful confusionReason`;
+2. If user is providing more details (like time or title) when we are looking for a reference, extract the description into "answerValue" and set type to "answer"
+3. If user says "actually...", "wait...", "cancel...", "never mind", it's "intent_shift" or "abort"
+4. If user says "no, [correct value]" or "not X, Y", it's a "correction"
+5. If referring to a candidate like "the one with [keyword]", match to a candidate and return "answer" with selectedId
+6. For time expressions, convert to natural description (e.g., "3pm tomorrow")
+7. NEVER complain about receiving a description instead of a reference. If they describe it, that IS the reference.
+8. If you can't understand, return "unclear" with a helpful confusionReason`;
     }
 
     /**
@@ -443,6 +453,7 @@ RULES:
                 answerValue: parsed.selectedId || parsed.answerValue || undefined,
                 confusionReason: parsed.confusionReason || undefined,
                 correctedField: parsed.type === 'correction' ? parsed.answerField : undefined,
+                event: parsed.event || undefined,
             };
         } catch {
             return { type: 'unclear', confusionReason: 'Failed to parse LLM response' };

@@ -163,6 +163,7 @@ interface ChatViewProps {
   onEventCreated?: (event: CalendarEvent) => void;
   onEventUpdated?: (event: CalendarEvent) => void;
   onEventDeleted?: (event: CalendarEvent) => void;
+  calendars?: import('@/types').CalendarCategory[];
 }
 
 // ============================================================================
@@ -227,7 +228,15 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
-function AssistantMessage({ message, onNavigateToEvent }: { message: ChatMessage; onNavigateToEvent?: (date: Date) => void }) {
+function AssistantMessage({
+  message,
+  onNavigateToEvent,
+  calendars = []
+}: {
+  message: ChatMessage;
+  onNavigateToEvent?: (date: Date) => void;
+  calendars?: import('@/types').CalendarCategory[];
+}) {
   const isSuccess = message.content.startsWith('✅');
   const isError = message.content.startsWith('❌');
 
@@ -289,11 +298,17 @@ function AssistantMessage({ message, onNavigateToEvent }: { message: ChatMessage
 
             {/* Show event card if one was created/updated */}
             {message.event && (
-              <motion.div variants={eventCardVariants}>
+              <motion.div
+                variants={eventCardVariants}
+                initial="initial"
+                animate="animate"
+                className="mt-2"
+              >
                 <EventCard
                   event={message.event}
                   intent={message.intent}
                   onNavigateToEvent={onNavigateToEvent}
+                  calendars={calendars}
                 />
               </motion.div>
             )}
@@ -303,16 +318,18 @@ function AssistantMessage({ message, onNavigateToEvent }: { message: ChatMessage
               <div className="space-y-2 mt-2">
                 {message.events.map((event, index) => (
                   <motion.div
-                    key={event.id || index}
+                    key={event.id || `event-${index}`}
                     variants={eventCardVariants}
                     initial="initial"
                     animate="animate"
                     transition={{ delay: index * 0.05 }}
+                    className="mt-1"
                   >
                     <EventCard
                       event={event}
                       compact
                       onNavigateToEvent={onNavigateToEvent}
+                      calendars={calendars}
                     />
                   </motion.div>
                 ))}
@@ -325,11 +342,12 @@ function AssistantMessage({ message, onNavigateToEvent }: { message: ChatMessage
   );
 }
 
-function EventCard({ event, intent, compact, onNavigateToEvent }: {
+function EventCard({ event, intent, compact, onNavigateToEvent, calendars = [] }: {
   event: CalendarEvent;
   intent?: string;
   compact?: boolean;
   onNavigateToEvent?: (date: Date) => void;
+  calendars?: import('@/types').CalendarCategory[];
 }) {
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString('en-US', {
@@ -347,20 +365,22 @@ function EventCard({ event, intent, compact, onNavigateToEvent }: {
     });
   };
 
-  const typeColors: Record<string, string> = {
-    business: 'border-blue-500 bg-blue-500/10 hover:bg-blue-500/20',
-    personal: 'border-red-500 bg-red-500/10 hover:bg-red-500/20',
-    meetings: 'border-orange-500 bg-orange-500/10 hover:bg-orange-500/20',
-    holiday: 'border-green-500 bg-green-500/10 hover:bg-green-500/20',
-  };
+  // Look up calendar theme
+  const calendar = calendars.find(c => c.id === event.type) || calendars.find(c => c.isDefault) || calendars[0];
+  const theme = calendar?.theme;
+
+  const typeBorderColor = theme?.border || 'border-gray-500';
+  const typeBgColor = compact ? 'bg-surface-dark/50' : (theme?.bg || 'bg-gray-500/10');
+  const typeHoverBgColor = theme?.hover || 'hover:bg-gray-500/20';
 
   return (
     <div
       onClick={() => onNavigateToEvent?.(new Date(event.start))}
       className={clsx(
         "rounded-lg border-l-4 p-3 transition-colors cursor-pointer group",
-        typeColors[event.type] || typeColors.personal,
-        compact ? 'bg-surface-dark/50' : 'bg-surface-dark'
+        typeBorderColor,
+        typeBgColor,
+        typeHoverBgColor
       )}
       role="button"
       tabIndex={0}
@@ -411,34 +431,45 @@ const ChatView: React.FC<ChatViewProps> = ({
   onEventCreated,
   onEventUpdated,
   onEventDeleted,
+  calendars = [],
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [conversationId] = useState(() => crypto.randomUUID());
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Auto-resize textarea
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
-    const textarea = e.target;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
-  }, []);
-
-  // Send message
-  const handleSend = useCallback(async () => {
-    const trimmed = inputValue.trim();
-    if (!trimmed || isLoading) return;
-
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [inputValue, setInputValue] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [conversationId, setConversationId] = useState('');
+  
+    useEffect(() => {
+      const storedId = sessionStorage.getItem('conversationId');
+      if (storedId) {
+        setConversationId(storedId);
+      } else {
+        const newId = `conv_${crypto.randomUUID()}`;
+        sessionStorage.setItem('conversationId', newId);
+        setConversationId(newId);
+      }
+    }, []);
+  
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+  
+    // Auto-resize textarea
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInputValue(e.target.value);
+      const textarea = e.target;
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;        
+    }, []);
+  
+    // Send message
+    const handleSend = useCallback(async () => {
+      const trimmed = inputValue.trim();
+      if (!trimmed || isLoading || !conversationId) return;
     // Add user message
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -625,6 +656,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                     key={message.id}
                     message={message}
                     onNavigateToEvent={onNavigateToEvent}
+                    calendars={calendars}
                   />
                 )
               ))}

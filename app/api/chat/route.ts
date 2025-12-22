@@ -8,22 +8,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createChatController, createEmptyContext, ConversationContext, ChatRequest } from '@/lib/chat';
 
-// Store conversation contexts in memory (in production, use Redis/DB)
-const conversationContexts = new Map<string, ConversationContext>();
+// Store conversation contexts in memory with a TTL mechanism to prevent leaks.
+const conversationContexts = new Map<string, { context: ConversationContext, expires: number }>();
+const CONTEXT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Periodically clean up expired contexts
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, value] of conversationContexts.entries()) {
+        if (now > value.expires) {
+            conversationContexts.delete(id);
+        }
+    }
+}, 60 * 1000); // Check every minute
 
 // Get or create conversation context
 function getContext(conversationId: string): ConversationContext {
-    let context = conversationContexts.get(conversationId);
-    if (!context) {
-        context = createEmptyContext(conversationId);
-        conversationContexts.set(conversationId, context);
+    const stored = conversationContexts.get(conversationId);
+    if (!stored || Date.now() > stored.expires) {
+        const newContext = createEmptyContext(conversationId);
+        conversationContexts.set(conversationId, { context: newContext, expires: Date.now() + CONTEXT_TTL_MS });
+        return newContext;
     }
-    return context;
+    // Extend expiration on access
+    stored.expires = Date.now() + CONTEXT_TTL_MS;
+    return stored.context;
 }
 
 // Update stored context
 function updateContext(conversationId: string, context: ConversationContext): void {
-    conversationContexts.set(conversationId, context);
+    conversationContexts.set(conversationId, { context, expires: Date.now() + CONTEXT_TTL_MS });
 }
 
 export async function POST(request: NextRequest) {

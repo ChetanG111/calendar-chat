@@ -57,10 +57,10 @@ export async function GET(request: NextRequest) {
             title: event.title,
             start: event.startAt.toISOString(),
             end: event.endAt.toISOString(),
-            startDate: event.startDate,
-            endDate: event.endDate,
-            type: event.metadata?.type || 'personal',
-            description: event.description,
+            startDate: event.startDate || undefined,
+            endDate: event.endDate || undefined,
+            type: event.metadata?.type || 'default',
+            description: event.description || undefined,
             location: event.metadata?.location,
             guests: event.metadata?.guests,
             meetLink: event.metadata?.meetLink,
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
  * - title: string (required)
  * - start: ISO date string (required)
  * - end: ISO date string (required)
- * - type: 'business' | 'personal' | 'meetings' | 'holiday'
+ * - type: 'business' | 'personal' | 'meetings' | 'holiday' | 'default'
  * - description: string (optional)
  * - location: string (optional)
  * - isAllDay: boolean (optional)
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
             end?: string;
             startDate?: string;
             endDate?: string;
-            type?: 'business' | 'personal' | 'meetings' | 'holiday';
+            type?: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
             description?: string;
             location?: string;
             isAllDay?: boolean;
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         }
 
         const metadata: EventMetadata = {
-            type: body.type || 'personal',
+            type: body.type || 'default',
             location: body.location,
             guests: body.guests,
             meetLink: body.meetLink,
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
             end: event.endAt.toISOString(),
             startDate: event.startDate,
             endDate: event.endDate,
-            type: event.metadata?.type || 'personal',
+            type: event.metadata?.type || 'default',
             description: event.description,
             location: event.metadata?.location,
             guests: event.metadata?.guests,
