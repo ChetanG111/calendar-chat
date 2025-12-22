@@ -141,7 +141,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
       </div>
 
       {/* Scrollable Timeline */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark scroll-smooth custom-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark scroll-smooth no-scrollbar">
         <div className="relative w-full h-[1440px]">
           <div className="flex h-full">
             {/* Time Column */}

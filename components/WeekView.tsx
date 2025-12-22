@@ -169,7 +169,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
       </div>
 
       {/* Main Grid */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark custom-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark no-scrollbar">
         <div className="flex h-[1440px] relative">
           {/* Time Labels */}
           <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark z-10 text-right pr-2 pt-2 select-none sticky left-0">
