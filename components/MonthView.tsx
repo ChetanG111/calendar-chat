@@ -64,7 +64,9 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
       <div ref={containerRef} className="grid grid-cols-7 flex-grow border-l border-border-dark">
         {grid.map((cell, idx) => {
           const isToday = new Date().toDateString() === cell.date.toDateString();
-          const dayEvents = events.filter(e => e.start.toDateString() === cell.date.toDateString());
+          const cellEnd = new Date(cell.date);
+          cellEnd.setHours(23, 59, 59, 999);
+          const dayEvents = events.filter(e => e.start < cellEnd && e.end > cell.date);
 
           return (
             <div

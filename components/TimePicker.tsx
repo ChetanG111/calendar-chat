@@ -81,7 +81,7 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 z-50 flex flex-col bg-[#202124]/95 backdrop-blur-xl border border-zinc-700 shadow-2xl rounded-xl overflow-hidden w-[280px] animate-in fade-in zoom-in-95 duration-200 origin-top-left ring-1 ring-white/10">
+                <div className="absolute top-full right-0 mt-2 z-50 flex flex-col bg-[#202124]/95 backdrop-blur-xl border border-zinc-700 shadow-2xl rounded-xl overflow-hidden w-[240px] animate-in fade-in zoom-in-95 duration-200 origin-top-right ring-1 ring-white/10">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-white/5 bg-[#28292c]/50">
                         <div className="flex-1 text-center py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Hrs</div>
@@ -98,8 +98,8 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
                                     ref={displayHours === h ? hoursRef : null}
                                     onClick={() => handleHourChange(h)}
                                     className={`w-full py-1.5 text-sm transition-colors ${displayHours === h
-                                            ? 'bg-blue-500/20 text-blue-400 font-semibold'
-                                            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200 font-medium'
+                                        ? 'bg-blue-500/20 text-blue-400 font-semibold'
+                                        : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200 font-medium'
                                         }`}
                                 >
                                     {h}
@@ -115,8 +115,8 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
                                     ref={minutes === m ? minutesRef : null}
                                     onClick={() => handleMinuteChange(m)}
                                     className={`w-full py-1.5 text-sm transition-colors ${minutes === m
-                                            ? 'bg-blue-500/20 text-blue-400 font-semibold'
-                                            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200 font-medium'
+                                        ? 'bg-blue-500/20 text-blue-400 font-semibold'
+                                        : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200 font-medium'
                                         }`}
                                 >
                                     {m.toString().padStart(2, '0')}
@@ -132,8 +132,8 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
                                     ref={period === p ? periodRef : null}
                                     onClick={() => handlePeriodChange(p as 'AM' | 'PM')}
                                     className={`w-full py-2 text-xs font-bold rounded transition-all ${period === p
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                                            : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
+                                        : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
                                         }`}
                                 >
                                     {p}

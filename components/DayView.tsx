@@ -28,14 +28,18 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter events for this day, exclude all-day events, and deduplicate by content (Title + Time)
-  const daysEvents = events.reduce((acc, e) => {
-    const isSameDay = e.start.getDate() === currentDate.getDate() &&
-      e.start.getMonth() === currentDate.getMonth() &&
-      e.start.getFullYear() === currentDate.getFullYear();
+  // Calculate day boundaries
+  const dayStart = new Date(currentDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(currentDate);
+  dayEnd.setHours(23, 59, 59, 999);
 
-    if (!isSameDay) return acc;
+  // Filter events that overlap with this day, exclude all-day events, and deduplicate
+  const uniqueIntersectingEvents = events.reduce((acc, e) => {
     if (e.isAllDay) return acc;
+
+    // Check intersection
+    if (!(e.start < dayEnd && e.end > dayStart)) return acc;
 
     const isDuplicate = acc.some(existing =>
       existing.title === e.title &&
@@ -46,6 +50,13 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
     if (!isDuplicate) acc.push(e);
     return acc;
   }, [] as CalendarEvent[]);
+
+  // Clamp events to day boundaries for display
+  const daysEvents = uniqueIntersectingEvents.map(e => {
+    const clampedStart = e.start < dayStart ? dayStart : e.start;
+    const clampedEnd = e.end > dayEnd ? dayEnd : e.end;
+    return { ...e, start: clampedStart, end: clampedEnd };
+  });
 
   // State for current time indicator position
   const [currentTimePosition, setCurrentTimePosition] = useState<number | null>(() => {
@@ -187,6 +198,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
 
                 const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
                 const isSelected = event.id === selectedEventId;
+                const originalEvent = events.find(ev => ev.id === event.id) || event;
 
                 return (
                   <div
@@ -195,10 +207,10 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
                       e.stopPropagation();
                       const containerRect = containerRef.current?.getBoundingClientRect();
                       if (containerRect) {
-                        onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
+                        onEventClick?.(originalEvent, e.currentTarget.getBoundingClientRect(), containerRect);
                       }
                     }}
-                    className={`absolute ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md pl-4 pr-4 py-2 flex justify-between items-start shadow-sm cursor-pointer transition-all group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
+                    className={`absolute ${originalEvent.end > dayEnd ? 'border-b-0 rounded-b-none opacity-80' : ''} ${originalEvent.start < dayStart ? 'border-t-0 rounded-t-none opacity-80' : ''} ${originalEvent.end >= new Date() ? 'border-l-4' : ''} rounded-md pl-4 pr-4 py-2 flex justify-between items-start shadow-sm cursor-pointer transition-all group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
                     style={{
                       top: `${top}px`,
                       height: `${durationMinutes}px`,
@@ -208,8 +220,8 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
                     }}
                   >
                     <div className="flex-1 min-w-0 pr-2">
-                      <h4 className="text-sm font-medium truncate">{event.title}</h4>
-                      {event.description && <p className="text-xs opacity-70 mt-1 truncate">{event.description}</p>}
+                      <h4 className="text-sm font-medium truncate">{originalEvent.title}</h4>
+                      {originalEvent.description && <p className="text-xs opacity-70 mt-1 truncate">{originalEvent.description}</p>}
                     </div>
                     <span className="text-xs opacity-70 font-medium flex-shrink-0 whitespace-nowrap">
                       {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

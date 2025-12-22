@@ -271,50 +271,50 @@ export default function Home() {
         setCurrentDate(newDate);
     };
 
-    const handleEventClick = (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => {
+    const handleEventClick = (event: CalendarEvent) => {
         if (selectedEvent && selectedEvent.id === event.id && isPanelOpen && panelMode === 'view') {
-             // Close if already open on same event in view mode
+            // Close if already open on same event in view mode
             handleClosePanel();
             return;
         }
 
         setSelectedEvent(event);
-        setSelectedEventRect(eventRect);
-        setSelectedContainerRect(containerRect);
         setPanelMode('view');
         setIsPanelOpen(true);
     };
 
     const handleNewEvent = (data?: Partial<CalendarEvent>) => {
         setSelectedEvent(undefined);
-        setSelectedEventRect(null);
-        setSelectedContainerRect(null);
         setInitialEventData(data);
         setPanelMode('create');
         setIsPanelOpen(true);
     };
 
-    const handleClosePanel = () => {
-        setIsPanelOpen(false);
-        // Delay clearing selection to allow exit animation to look good
-        setTimeout(() => {
-            setSelectedEvent(undefined);
-            setSelectedEventRect(null);
-            setSelectedContainerRect(null);
-            setInitialEventData(undefined);
-        }, 300);
-    };
-
+        const handleClosePanel = () => {
+            setIsPanelOpen(false);
+            // Delay clearing selection to allow exit animation to look good        
+            setTimeout(() => {
+                setSelectedEvent(undefined);
+                setInitialEventData(undefined);
+            }, 600);
+        };
     const handleDeleteEvent = async () => {
         if (selectedEvent) {
+            const eventId = selectedEvent.eventId || selectedEvent.id;
+            // Optimistic UI update: remove immediately
+            const previousEvents = [...events];
+            setEvents(events.filter(e => !e.id.startsWith(eventId)));
+            handleClosePanel();
+
             try {
-                const eventId = selectedEvent.eventId || selectedEvent.id;
                 await deleteEventApi(eventId);
-                setEvents(events.filter(e => !e.id.startsWith(eventId)));
-                handleClosePanel();
-                loadEvents();
+                // Success: optionally reload to be sure, or trust local state
+                // loadEvents(); 
             } catch (error) {
                 console.error('Failed to delete event:', error);
+                // Revert on failure
+                setEvents(previousEvents);
+                // Ideally show a toast error here
             }
         }
     };

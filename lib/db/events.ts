@@ -84,6 +84,8 @@ export function createEvent(input: CreateEventInput): StoredEvent {
     const now = toUtcString(new Date());
 
     // Calculate date strings from startAt/endAt if not provided
+    // Prefer using the passed startDate/endDate which preserve local date intent.
+    // Fallback uses toISOString() which implies UTC date, which might differ from local.
     const startDate = input.startDate || input.startAt.toISOString().split('T')[0];
     const endDate = input.endDate || input.endAt.toISOString().split('T')[0];
 

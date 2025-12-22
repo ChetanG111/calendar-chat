@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import TimePicker from './TimePicker';
+import DatePicker from './DatePicker';
+import { Button } from '@/components/animate-ui/components/buttons/button';
 
 export type EventPanelMode = 'view' | 'edit' | 'create';
 
@@ -41,13 +43,16 @@ const containerVariants: Variants = {
         }
     },
     exit: {
-        x: 100,
+        x: 150,
         opacity: 0,
-        scale: 0.95,
+        scale: 0.9,
         filter: "blur(10px)",
         transition: {
-            duration: 0.2,
-            ease: "anticipate"
+            type: "spring",
+            damping: 30,
+            stiffness: 200,
+            mass: 1,
+            velocity: 2
         }
     }
 };
@@ -64,6 +69,45 @@ const itemVariants: Variants = {
             damping: 25
         }
     }
+};
+
+const editModeVariants: Variants = {
+    hidden: {
+        opacity: 0,
+        scale: 0.95,
+        filter: 'blur(4px)',
+        transformOrigin: 'top right'
+    },
+    visible: {
+        opacity: 1,
+        scale: 1,
+        filter: 'blur(0px)',
+        transition: {
+            type: "spring",
+            stiffness: 350,
+            damping: 25,
+            staggerChildren: 0.05,
+            delayChildren: 0.05
+        }
+    },
+    exit: {
+        opacity: 0,
+        scale: 0.95,
+        filter: 'blur(4px)',
+        transition: { duration: 0.15 }
+    }
+};
+
+const viewModeVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.05,
+            delayChildren: 0.05
+        }
+    },
+    exit: { opacity: 0, transition: { duration: 0.15 } }
 };
 
 const defaultTheme: CalendarTheme = {
@@ -114,10 +158,10 @@ const EventPanel: React.FC<EventPanelProps> = ({
         // If viewing, we don't necessarily need to reset form state, 
         // but if we switch to edit, we want it populated.
         // We'll populate based on the current 'event' or 'initialData' logic.
-        
+
         const targetEvent = mode === 'edit' ? event : undefined;
         // If create mode, use initialData.
-        
+
         if (targetEvent) {
             setTitle(targetEvent.title);
             setDescription(targetEvent.description || '');
@@ -131,18 +175,18 @@ const EventPanel: React.FC<EventPanelProps> = ({
         } else if (mode === 'create') {
             const data = initialData || {};
             const now = new Date();
-            
+
             // Default times
             const defaultStart = new Date(now);
             const defaultEnd = new Date(defaultStart);
             defaultEnd.setHours(defaultStart.getHours() + 1);
-            
+
             const formatTime = (date: Date) => date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
             setTitle(data.title || '');
             setDescription(data.description || '');
             setLocation(data.location || '');
-            
+
             // Calendar Type
             setEventType(data.type || (calendars.length > 0 ? (calendars.find(c => c.isDefault)?.id || calendars[0].id) : 'default'));
 
@@ -220,8 +264,6 @@ const EventPanel: React.FC<EventPanelProps> = ({
     // ----------------------------------------------------------------------
     const selectedCalendar = calendars.find(c => c.id === eventType) || calendars[0];
     const viewTheme = event ? (calendars?.find(c => c.id === event.type)?.theme || defaultTheme) : defaultTheme;
-
-    if (!isOpen) return null;
 
     // View Mode Content
     const renderViewMode = () => {
@@ -317,7 +359,7 @@ const EventPanel: React.FC<EventPanelProps> = ({
         return (
             <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <div className="p-6 pt-2 flex flex-col gap-5">
-                    
+
                     {/* Title Input */}
                     <motion.div variants={itemVariants} className="ml-10">
                         <input
@@ -339,11 +381,11 @@ const EventPanel: React.FC<EventPanelProps> = ({
                             <div className="flex flex-col gap-1 text-[#e8eaed] text-sm">
                                 {/* Start Date/Time */}
                                 <div className="flex items-center gap-3">
-                                    <input
-                                        type="date"
+                                    <DatePicker
                                         value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        className="bg-transparent text-[#e8eaed] text-sm border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 px-0 py-1 transition-colors w-[120px] font-medium"
+                                        onChange={setStartDate}
+                                        placeholder="Start date"
+                                        className="w-[140px]"
                                     />
 
                                     {!isAllDay && (
@@ -363,11 +405,11 @@ const EventPanel: React.FC<EventPanelProps> = ({
 
                                 {/* End Date/Time */}
                                 <div className="flex items-center gap-3">
-                                    <input
-                                        type="date"
+                                    <DatePicker
                                         value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        className="bg-transparent text-[#e8eaed] text-sm border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 px-0 py-1 transition-colors w-[120px] font-medium"
+                                        onChange={setEndDate}
+                                        placeholder="End date"
+                                        className="w-[140px]"
                                     />
 
                                     {!isAllDay && (
@@ -474,14 +516,17 @@ const EventPanel: React.FC<EventPanelProps> = ({
                     </motion.div>
 
                     {/* Footer Actions */}
-                    <div className="flex justify-end pt-4 gap-3">
-                        {mode === 'edit' && (
-                             <button onClick={onClose} className="px-5 py-2.5 rounded text-sm font-medium text-[#e8eaed] hover:bg-[#303134] transition-colors">Cancel</button>
-                        )}
-                        <button onClick={handleFormSave} className="px-8 py-2.5 rounded text-sm font-medium bg-primary text-white hover:brightness-110 transition-colors shadow-lg font-semibold tracking-wide">
+                    <motion.div variants={itemVariants} className="flex justify-end pt-4 gap-3">
+                        <button onClick={onClose} className="px-5 py-2.5 rounded text-sm font-medium text-[#e8eaed] hover:bg-[#303134] transition-colors">Cancel</button>
+                        <Button
+                            onClick={handleFormSave}
+                            className="px-8 py-2.5 rounded text-sm font-medium bg-primary text-white hover:brightness-110 transition-colors shadow-lg font-semibold tracking-wide border-0"
+                            hoverScale={1.02}
+                            tapScale={0.98}
+                        >
                             Save
-                        </button>
-                    </div>
+                        </Button>
+                    </motion.div>
                 </div>
             </div>
         );
@@ -509,22 +554,64 @@ const EventPanel: React.FC<EventPanelProps> = ({
                         <motion.div variants={itemVariants} className="flex items-center gap-1">
                             {mode === 'view' && (
                                 <>
-                                    <button onClick={onEdit} className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-white/10 rounded-full transition-colors" title="Edit event">
+                                    <motion.button
+                                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={onEdit}
+                                        className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] rounded-full transition-colors"
+                                        title="Edit event"
+                                    >
                                         <span className="material-symbols-outlined text-[18px]">edit</span>
-                                    </button>
-                                    <button onClick={onDelete} className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-white/10 rounded-full transition-colors" title="Delete event">
+                                    </motion.button>
+                                    <motion.button
+                                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={onDelete}
+                                        className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] rounded-full transition-colors"
+                                        title="Delete event"
+                                    >
                                         <span className="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
+                                    </motion.button>
                                     <div className="w-[1px] h-4 bg-white/10 mx-1"></div>
                                 </>
                             )}
-                            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-white/10 rounded-full transition-colors" title="Close">
+                            <motion.button
+                                whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={onClose}
+                                className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] rounded-full transition-colors"
+                                title="Close"
+                            >
                                 <span className="material-symbols-outlined text-[18px]">close</span>
-                            </button>
+                            </motion.button>
                         </motion.div>
                     </div>
 
-                    {mode === 'view' ? renderViewMode() : renderEditMode()}
+                    <AnimatePresence mode="wait" initial={false}>
+                        {mode === 'view' ? (
+                            <motion.div
+                                key="view"
+                                variants={viewModeVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="flex-1 overflow-hidden flex flex-col"
+                            >
+                                {renderViewMode()}
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="edit"
+                                variants={editModeVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="flex-1 overflow-hidden flex flex-col"
+                            >
+                                {renderEditMode()}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </motion.div>
             )}
         </AnimatePresence>

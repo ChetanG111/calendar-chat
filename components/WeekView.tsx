@@ -201,41 +201,51 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
                   }}
                 >
                   {/* Events for this day */}
-                  {arrangeEvents(events.filter(e => {
-                    if (e.isAllDay) return false;
+                  {/* Events for this day - Filter overlapping and clamp to day boundaries */}
+                  {(() => {
                     const dayStart = new Date(day);
                     dayStart.setHours(0, 0, 0, 0);
                     const dayEnd = new Date(day);
                     dayEnd.setHours(23, 59, 59, 999);
-                    return e.start >= dayStart && e.start <= dayEnd;
-                  })).map(({ event, style }) => {
-                    const startMin = event.start.getHours() * 60 + event.start.getMinutes();
-                    const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
-                    const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
 
-                    return (
-                      <div
-                        key={event.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const containerRect = containerRef.current?.getBoundingClientRect();
-                          if (containerRect) {
-                            onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
-                          }
-                        }}
-                        className={`absolute z-10 px-2 py-1 ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-text shadow-sm transition-all overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
-                        style={{
-                          top: `${startMin}px`,
-                          height: `${duration}px`,
-                          left: style.left,
-                          width: style.width
-                        }}
-                      >
-                        <p className="font-semibold truncate">{event.title}</p>
-                        <p className="opacity-80">{event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
-                    );
-                  })}
+                    const dayEvents = events
+                      .filter(e => !e.isAllDay && e.start < dayEnd && e.end > dayStart)
+                      .map(e => {
+                        const clampedStart = e.start < dayStart ? dayStart : e.start;
+                        const clampedEnd = e.end > dayEnd ? dayEnd : e.end;
+                        return { ...e, start: clampedStart, end: clampedEnd };
+                      });
+
+                    return arrangeEvents(dayEvents).map(({ event, style }) => {
+                      const startMin = event.start.getHours() * 60 + event.start.getMinutes();
+                      const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
+                      const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
+                      const originalEvent = events.find(ev => ev.id === event.id) || event;
+
+                      return (
+                        <div
+                          key={event.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const containerRect = containerRef.current?.getBoundingClientRect();
+                            if (containerRect) {
+                              onEventClick?.(originalEvent, e.currentTarget.getBoundingClientRect(), containerRect);
+                            }
+                          }}
+                          className={`absolute z-10 px-2 py-1 ${originalEvent.end > dayEnd ? 'border-b-0 rounded-b-none opacity-80' : ''} ${originalEvent.start < dayStart ? 'border-t-0 rounded-t-none opacity-80' : ''} ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-pointer shadow-sm transition-all overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
+                          style={{
+                            top: `${startMin}px`,
+                            height: `${duration}px`,
+                            left: style.left,
+                            width: style.width
+                          }}
+                        >
+                          <p className="font-semibold truncate">{originalEvent.title}</p>
+                          <p className="opacity-80">{event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      );
+                    });
+                  })()}
 
                   {/* Current Time Line - only on today's column */}
                   {isToday(day) && (
