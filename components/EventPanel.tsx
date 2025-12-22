@@ -25,32 +25,35 @@ const containerVariants: Variants = {
     hidden: {
         x: 480,
         opacity: 0,
-        scale: 0.95,
-        filter: "blur(10px)"
+        scale: 0.98,
+        filter: "blur(10px)",
+        boxShadow: "0 0 0 rgba(0,0,0,0)"
     },
     visible: {
         x: 0,
         opacity: 1,
         scale: 1,
         filter: "blur(0px)",
+        boxShadow: "0 24px 48px rgba(0,0,0,0.75)",
         transition: {
             type: "spring",
-            damping: 28,
-            stiffness: 300,
+            damping: 24,
+            stiffness: 280,
             mass: 0.8,
-            staggerChildren: 0.05,
+            staggerChildren: 0.08,
             delayChildren: 0.1
         }
     },
     exit: {
-        x: 150,
+        x: 480,
         opacity: 0,
-        scale: 0.9,
+        scale: 0.98,
         filter: "blur(10px)",
+        boxShadow: "0 0 0 rgba(0,0,0,0)",
         transition: {
             type: "spring",
             damping: 30,
-            stiffness: 200,
+            stiffness: 300,
             mass: 1,
             velocity: 2
         }
@@ -58,15 +61,22 @@ const containerVariants: Variants = {
 };
 
 const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20, scale: 0.9 },
+    hidden: {
+        opacity: 0,
+        y: 20,
+        scale: 0.95,
+        filter: "blur(4px)"
+    },
     visible: {
         opacity: 1,
         y: 0,
         scale: 1,
+        filter: "blur(0px)",
         transition: {
             type: "spring",
             stiffness: 400,
-            damping: 25
+            damping: 25,
+            mass: 0.8
         }
     }
 };
@@ -74,26 +84,16 @@ const itemVariants: Variants = {
 const editModeVariants: Variants = {
     hidden: {
         opacity: 0,
-        scale: 0.95,
-        filter: 'blur(4px)',
-        transformOrigin: 'top right'
     },
     visible: {
         opacity: 1,
-        scale: 1,
-        filter: 'blur(0px)',
         transition: {
-            type: "spring",
-            stiffness: 350,
-            damping: 25,
-            staggerChildren: 0.05,
-            delayChildren: 0.05
+            staggerChildren: 0.06,
+            delayChildren: 0.02
         }
     },
     exit: {
         opacity: 0,
-        scale: 0.95,
-        filter: 'blur(4px)',
         transition: { duration: 0.15 }
     }
 };
@@ -103,7 +103,7 @@ const viewModeVariants: Variants = {
     visible: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.05,
+            staggerChildren: 0.1,
             delayChildren: 0.05
         }
     },
@@ -118,6 +118,17 @@ const defaultTheme: CalendarTheme = {
     dot: 'bg-blue-500',
     hover: 'hover:bg-blue-500/30',
     solidBg: 'bg-blue-500'
+};
+
+const contentContainerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            delayChildren: 0.1,
+            staggerChildren: 0.08
+        }
+    }
 };
 
 const EventPanel: React.FC<EventPanelProps> = ({
@@ -148,19 +159,14 @@ const EventPanel: React.FC<EventPanelProps> = ({
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Initialize form data when opening in Create/Edit mode
+    // Initialize form data when opening in create/edit mode
     useEffect(() => {
         if (!isOpen) {
             setIsDropdownOpen(false);
             return;
         }
 
-        // If viewing, we don't necessarily need to reset form state, 
-        // but if we switch to edit, we want it populated.
-        // We'll populate based on the current 'event' or 'initialData' logic.
-
         const targetEvent = mode === 'edit' ? event : undefined;
-        // If create mode, use initialData.
 
         if (targetEvent) {
             setTitle(targetEvent.title);
@@ -176,7 +182,6 @@ const EventPanel: React.FC<EventPanelProps> = ({
             const data = initialData || {};
             const now = new Date();
 
-            // Default times
             const defaultStart = new Date(now);
             const defaultEnd = new Date(defaultStart);
             defaultEnd.setHours(defaultStart.getHours() + 1);
@@ -186,11 +191,8 @@ const EventPanel: React.FC<EventPanelProps> = ({
             setTitle(data.title || '');
             setDescription(data.description || '');
             setLocation(data.location || '');
-
-            // Calendar Type
             setEventType(data.type || (calendars.length > 0 ? (calendars.find(c => c.isDefault)?.id || calendars[0].id) : 'default'));
 
-            // Start/End Logic
             if (data.start) {
                 setStartTime(formatTime(data.start));
                 setStartDate(data.startDate || data.start.toISOString().split('T')[0]);
@@ -212,7 +214,6 @@ const EventPanel: React.FC<EventPanelProps> = ({
     }, [isOpen, mode, event, initialData, calendars]);
 
 
-    // Handle click outside dropdown
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -225,7 +226,6 @@ const EventPanel: React.FC<EventPanelProps> = ({
 
 
     const handleFormSave = () => {
-        // Construct dates
         const baseStartDate = startDate ? new Date(`${startDate}T00:00:00`) : new Date();
         const baseEndDate = endDate ? new Date(`${endDate}T00:00:00`) : baseStartDate;
 
@@ -259,13 +259,9 @@ const EventPanel: React.FC<EventPanelProps> = ({
         });
     };
 
-    // ----------------------------------------------------------------------
-    // Render Helpers
-    // ----------------------------------------------------------------------
     const selectedCalendar = calendars.find(c => c.id === eventType) || calendars[0];
     const viewTheme = event ? (calendars?.find(c => c.id === event.type)?.theme || defaultTheme) : defaultTheme;
 
-    // View Mode Content
     const renderViewMode = () => {
         if (!event) return null;
         const durationMinutes = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
@@ -275,7 +271,7 @@ const EventPanel: React.FC<EventPanelProps> = ({
 
         return (
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <div className="p-6 pt-2 flex flex-col gap-5">
+                <motion.div variants={contentContainerVariants} className="p-6 pt-2 flex flex-col gap-5">
                     {/* Title */}
                     <motion.div variants={itemVariants} className="flex gap-4 items-start">
                         {event.end >= new Date() && (
@@ -349,16 +345,15 @@ const EventPanel: React.FC<EventPanelProps> = ({
                             </div>
                         </div>
                     </motion.div>
-                </div>
+                </motion.div>
             </div>
         );
     };
 
-    // Edit/Create Mode Content
     const renderEditMode = () => {
         return (
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <div className="p-6 pt-2 flex flex-col gap-5">
+                <motion.div variants={contentContainerVariants} className="p-6 pt-2 flex flex-col gap-5">
 
                     {/* Title Input */}
                     <motion.div variants={itemVariants} className="ml-10">
@@ -527,7 +522,7 @@ const EventPanel: React.FC<EventPanelProps> = ({
                             Save
                         </Button>
                     </motion.div>
-                </div>
+                </motion.div>
             </div>
         );
     }
@@ -587,7 +582,7 @@ const EventPanel: React.FC<EventPanelProps> = ({
                         </motion.div>
                     </div>
 
-                    <AnimatePresence mode="wait" initial={false}>
+                    <AnimatePresence mode="wait">
                         {mode === 'view' ? (
                             <motion.div
                                 key="view"

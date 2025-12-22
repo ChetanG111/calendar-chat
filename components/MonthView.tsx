@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { getThemeForColor } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -90,26 +91,33 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
               </div>
 
               <div className="space-y-1">
-                {dayEvents.slice(0, 3).map(ev => {
-                  const theme = calendars?.find(c => c.id === ev.type)?.theme || defaultTheme;
-                  return (
-                    <div
-                      key={ev.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const containerRect = containerRef.current?.getBoundingClientRect();
-                        if (containerRect) {
-                          onEventClick?.(ev, e.currentTarget.getBoundingClientRect(), containerRect);
-                        }
-                      }}
-                      className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors ${ev.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.hover}`} `}
-                    >
-                      <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></div>
-                      <span className="text-xs font-medium text-gray-400 truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                      <span className="text-xs text-gray-300 truncate font-medium">{ev.title}</span>
-                    </div>
-                  )
-                })}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {dayEvents.slice(0, 3).map(ev => {
+                    const theme = calendars?.find(c => c.id === ev.type)?.theme || defaultTheme;
+                    return (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        key={ev.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const containerRect = containerRef.current?.getBoundingClientRect();
+                          if (containerRect) {
+                            onEventClick?.(ev, e.currentTarget.getBoundingClientRect(), containerRect);
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors ${ev.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.hover}`} `}
+                      >
+                        <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></div>
+                        <span className="text-xs font-medium text-gray-400 truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                        <span className="text-xs text-gray-300 truncate font-medium">{ev.title}</span>
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
                 {dayEvents.length > 3 && (
                   <div className="text-xs text-gray-500 font-medium px-2 py-1">
                     {dayEvents.length - 3} more

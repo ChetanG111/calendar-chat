@@ -9,7 +9,7 @@ import MonthView from '@/components/MonthView';
 import ChatView from '@/components/ChatView';
 import EventPanel, { EventPanelMode } from '@/components/EventPanel';
 import ViewSwitcher from '@/components/ViewSwitcher';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, Variants } from 'framer-motion';
 import { ChevronLeft } from '@/components/animate-ui/icons/chevron-left';
 import { ChevronRight } from '@/components/animate-ui/icons/chevron-right';
 import { PanelLeftOpen } from '@/components/animate-ui/icons/panel-left-open';
@@ -26,6 +26,7 @@ import {
 export default function Home() {
     const [currentView, setCurrentView] = useState<ViewType>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [slideDirection, setSlideDirection] = useState<number>(0);
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [calendars, setCalendars] = useState<CalendarCategory[]>(DEFAULT_CALENDARS);
     const [isLoading, setIsLoading] = useState(true);
@@ -143,13 +144,39 @@ export default function Home() {
 
     // Layout handling
     const renderView = () => {
+        const viewVariants: Variants = {
+            initial: (direction: number) => ({
+                opacity: 0,
+                // x: direction > 0 ? 300 : -300,
+                x: direction * 50, // Subtle slide
+                scale: 0.96,
+                filter: 'blur(4px)'
+            }),
+            animate: {
+                opacity: 1,
+                x: 0,
+                scale: 1,
+                filter: 'blur(0px)',
+                transition: { type: "spring" as const, stiffness: 350, damping: 25, mass: 1 }
+            },
+            exit: (direction: number) => ({
+                opacity: 0,
+                // x: direction < 0 ? 300 : -300,
+                x: direction * -50, // Subtle slide exit opposite
+                scale: 0.96,
+                filter: 'blur(4px)',
+                transition: { duration: 0.15, ease: "easeOut" }
+            })
+        };
+
         if (isLoading && events.length === 0) {
             return (
                 <motion.div
                     key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    variants={viewVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
                     className="flex-1 flex items-center justify-center"
                 >
                     <div className="text-gray-400">Loading events...</div>
@@ -170,96 +197,59 @@ export default function Home() {
             selectedEventId: selectedEvent?.id,
         };
 
+        let viewContent;
         switch (currentView) {
             case 'day':
-                return (
-                    <motion.div
-                        key="day"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className={className}
-                    >
-                        <DayView {...viewProps} />
-                    </motion.div>
-                );
+                viewContent = <DayView {...viewProps} />;
+                break;
             case 'week':
-                return (
-                    <motion.div
-                        key="week"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className={className}
-                    >
-                        <WeekView
-                            {...viewProps}
-                            onDateChange={setCurrentDate}
-                        />
-                    </motion.div>
-                );
+                viewContent = <WeekView {...viewProps} onDateChange={setCurrentDate} />;
+                break;
             case 'month':
-                return (
-                    <motion.div
-                        key="month"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className={className}
-                    >
-                        <MonthView {...viewProps} onDateChange={setCurrentDate} />
-                    </motion.div>
-                );
+                viewContent = <MonthView {...viewProps} onDateChange={setCurrentDate} />;
+                break;
             case 'chat':
-                return (
-                    <motion.div
-                        key="chat"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className={className}
-                    >
-                        <ChatView
-                            onViewChange={setCurrentView}
-                            onNavigateToday={() => {
-                                setCurrentDate(new Date());
-                                setCurrentView('day');
-                            }}
-                            onNavigateToEvent={(date) => {
-                                setCurrentDate(date);
-                                setCurrentView('day');
-                            }}
-                            onEventCreated={() => loadEvents()}
-                            onEventUpdated={() => loadEvents()}
-                            onEventDeleted={() => loadEvents()}
-                            calendars={calendars}
-                        />
-                    </motion.div>
+                viewContent = (
+                    <ChatView
+                        onViewChange={setCurrentView}
+                        onNavigateToday={() => {
+                            setCurrentDate(new Date());
+                            setCurrentView('day');
+                        }}
+                        onNavigateToEvent={(date) => {
+                            setCurrentDate(date);
+                            setCurrentView('day');
+                        }}
+                        onEventCreated={() => loadEvents()}
+                        onEventUpdated={() => loadEvents()}
+                        onEventDeleted={() => loadEvents()}
+                        calendars={calendars}
+                    />
                 );
+                break;
             default:
-                return (
-                    <motion.div
-                        key="default"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className={className}
-                    >
-                        <WeekView
-                            {...viewProps}
-                            onDateChange={setCurrentDate}
-                        />
-                    </motion.div>
-                );
+                viewContent = <WeekView {...viewProps} onDateChange={setCurrentDate} />;
         }
+
+        return (
+            <motion.div
+                key={`${currentView}-${currentDate.toISOString().split('T')[0]}`} // Trigger animation on date change
+                custom={slideDirection}
+                variants={viewVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className={className}
+            >
+                {viewContent}
+            </motion.div>
+        );
     };
 
-    const handleDateNav = (direction: 'prev' | 'next') => {
+    const handleDateNav = useCallback((direction: 'prev' | 'next') => {
+        const dir = direction === 'next' ? 1 : -1;
+        setSlideDirection(dir);
+
         const newDate = new Date(currentDate);
         if (currentView === 'day') {
             newDate.setDate(currentDate.getDate() + (direction === 'next' ? 1 : -1));
@@ -269,7 +259,51 @@ export default function Home() {
             newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
         }
         setCurrentDate(newDate);
-    };
+    }, [currentDate, currentView]);
+
+    // Keyboard and horizontal scroll navigation
+    const isNavigatingRef = React.useRef(false); // Ref for debounce
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isPanelOpen) return; // Don't navigate if panel is open (might be typing)
+            if (['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                if (document.activeElement instanceof HTMLInputElement ||
+                    document.activeElement instanceof HTMLTextAreaElement) {
+                    return;
+                }
+                handleDateNav(e.key === 'ArrowLeft' ? 'prev' : 'next');
+            }
+        };
+
+        const handleWheel = (e: WheelEvent) => {
+            // Prevent default browser back/forward navigation on trackpad
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                e.preventDefault();
+            }
+
+            if (isNavigatingRef.current) return;
+
+            // Threshold for horizontal swipe/scroll
+            if (Math.abs(e.deltaX) > 40) { // deltaX is usually horizontal scroll
+                isNavigatingRef.current = true;
+                handleDateNav(e.deltaX > 0 ? 'next' : 'prev');
+
+                // Debounce
+                setTimeout(() => {
+                    isNavigatingRef.current = false;
+                }, 500);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        // Passive: false is required to call preventDefault
+        window.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('wheel', handleWheel);
+        };
+    }, [handleDateNav, isPanelOpen]);
 
     const handleEventClick = (event: CalendarEvent) => {
         if (selectedEvent && selectedEvent.id === event.id && isPanelOpen && panelMode === 'view') {
@@ -290,14 +324,14 @@ export default function Home() {
         setIsPanelOpen(true);
     };
 
-        const handleClosePanel = () => {
-            setIsPanelOpen(false);
-            // Delay clearing selection to allow exit animation to look good        
-            setTimeout(() => {
-                setSelectedEvent(undefined);
-                setInitialEventData(undefined);
-            }, 600);
-        };
+    const handleClosePanel = () => {
+        setIsPanelOpen(false);
+        // Delay clearing selection to allow exit animation to look good        
+        setTimeout(() => {
+            setSelectedEvent(undefined);
+            setInitialEventData(undefined);
+        }, 600);
+    };
     const handleDeleteEvent = async () => {
         if (selectedEvent) {
             const eventId = selectedEvent.eventId || selectedEvent.id;
@@ -451,7 +485,7 @@ export default function Home() {
                 </AnimatePresence>
 
                 <main className="flex-1 flex flex-col min-w-0 bg-background-dark relative overflow-hidden transition-all duration-300 ease-in-out">
-                    <AnimatePresence mode="wait" initial={false}>
+                    <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
                         {renderView()}
                     </AnimatePresence>
                 </main>

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { arrangeEvents } from '@/lib/utils';
 import { getThemeForColor } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DayViewProps {
   currentDate: Date;
@@ -125,28 +126,35 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
             className="flex-1 relative cursor-pointer hover:bg-white/5 transition-colors p-1 flex flex-col gap-1 select-none"
             onDoubleClick={() => onNewEvent && onNewEvent({ isAllDay: true, start: currentDate, end: currentDate })}
           >
-            {events.filter(e => e.isAllDay &&
-              e.start.getDate() === currentDate.getDate() &&
-              e.start.getMonth() === currentDate.getMonth() &&
-              e.start.getFullYear() === currentDate.getFullYear()
-            ).map(e => {
-              const theme = calendars?.find(c => c.id === e.type)?.theme || defaultTheme;
-              return (
-                <div
-                  key={e.id}
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    const containerRect = containerRef.current?.getBoundingClientRect();
-                    if (containerRect) {
-                      onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
-                    }
-                  }}
-                  className={`p-2 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
-                >
-                  {e.title}
-                </div>
-              );
-            })}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {events.filter(e => e.isAllDay &&
+                e.start.getDate() === currentDate.getDate() &&
+                e.start.getMonth() === currentDate.getMonth() &&
+                e.start.getFullYear() === currentDate.getFullYear()
+              ).map(e => {
+                const theme = calendars?.find(c => c.id === e.type)?.theme || defaultTheme;
+                return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    key={e.id}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      const containerRect = containerRef.current?.getBoundingClientRect();
+                      if (containerRect) {
+                        onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
+                      }
+                    }}
+                    className={`p-2 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
+                  >
+                    {e.title}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -190,45 +198,51 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
                 </div>
               )}
 
-              {arrangeEvents(daysEvents).map(({ event, style }) => {
-                const startHour = event.start.getHours();
-                const startMin = event.start.getMinutes();
-                const durationMinutes = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
-                const top = (startHour * 60) + startMin;
+              <AnimatePresence mode="popLayout">
+                {arrangeEvents(daysEvents).map(({ event, style }) => {
+                  const startHour = event.start.getHours();
+                  const startMin = event.start.getMinutes();
+                  const durationMinutes = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
+                  const top = (startHour * 60) + startMin;
 
-                const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
-                const isSelected = event.id === selectedEventId;
-                const originalEvent = events.find(ev => ev.id === event.id) || event;
+                  const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
+                  const isSelected = event.id === selectedEventId;
+                  const originalEvent = events.find(ev => ev.id === event.id) || event;
 
-                return (
-                  <div
-                    key={event.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const containerRect = containerRef.current?.getBoundingClientRect();
-                      if (containerRect) {
-                        onEventClick?.(originalEvent, e.currentTarget.getBoundingClientRect(), containerRect);
-                      }
-                    }}
-                    className={`absolute ${originalEvent.end > dayEnd ? 'border-b-0 rounded-b-none opacity-80' : ''} ${originalEvent.start < dayStart ? 'border-t-0 rounded-t-none opacity-80' : ''} ${originalEvent.end >= new Date() ? 'border-l-4' : ''} rounded-md pl-4 pr-4 py-2 flex justify-between items-start shadow-sm cursor-pointer transition-all group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
-                    style={{
-                      top: `${top}px`,
-                      height: `${durationMinutes}px`,
-                      minHeight: '40px',
-                      left: style.left,
-                      width: style.width
-                    }}
-                  >
-                    <div className="flex-1 min-w-0 pr-2">
-                      <h4 className="text-sm font-medium truncate">{originalEvent.title}</h4>
-                      {originalEvent.description && <p className="text-xs opacity-70 mt-1 truncate">{originalEvent.description}</p>}
-                    </div>
-                    <span className="text-xs opacity-70 font-medium flex-shrink-0 whitespace-nowrap">
-                      {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                );
-              })}
+                  return (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const containerRect = containerRef.current?.getBoundingClientRect();
+                        if (containerRect) {
+                          onEventClick?.(originalEvent, e.currentTarget.getBoundingClientRect(), containerRect);
+                        }
+                      }}
+                      className={`absolute ${originalEvent.end > dayEnd ? 'border-b-0 rounded-b-none opacity-80' : ''} ${originalEvent.start < dayStart ? 'border-t-0 rounded-t-none opacity-80' : ''} ${originalEvent.end >= new Date() ? 'border-l-4' : ''} rounded-md pl-4 pr-4 py-2 flex justify-between items-start shadow-sm cursor-pointer overflow-hidden group ${theme.border} ${isSelected ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
+                      style={{
+                        top: `${top}px`,
+                        height: `${durationMinutes}px`,
+                        left: style.left,
+                        width: style.width
+                      }}
+                    >
+                      <div className="flex-1 min-w-0 pr-2">
+                        <h4 className="text-sm font-medium truncate">{originalEvent.title}</h4>
+                        {originalEvent.description && <p className="text-xs opacity-70 mt-1 truncate">{originalEvent.description}</p>}
+                      </div>
+                      <span className="text-xs opacity-70 font-medium flex-shrink-0 whitespace-nowrap">
+                        {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </div>
         </div>
