@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ViewType, CalendarEvent } from '@/types';
+import { ViewType, CalendarEvent, CalendarCategory, DEFAULT_CALENDARS, getThemeForColor } from '@/types';
 import Sidebar from '@/components/Sidebar';
 import DayView from '@/components/DayView';
 import WeekView from '@/components/WeekView';
@@ -23,6 +23,7 @@ export default function Home() {
     const [currentView, setCurrentView] = useState<ViewType>('week');
     const [currentDate, setCurrentDate] = useState(new Date(2025, 11, 16)); // Dec 16 2025 as per screenshot
     const [events, setEvents] = useState<CalendarEvent[]>([]);
+    const [calendars, setCalendars] = useState<CalendarCategory[]>(DEFAULT_CALENDARS);
     const [isLoading, setIsLoading] = useState(true);
     const [initialEventData, setInitialEventData] = useState<Partial<CalendarEvent> | undefined>(undefined);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -85,7 +86,50 @@ export default function Home() {
         loadEvents();
     }, [loadEvents]);
 
-    // Layout handling
+    // Calendar Management Handlers
+    const handleAddCalendar = (data: { label: string; colorName: string }) => {
+        const newId = crypto.randomUUID();
+        const newCalendar: CalendarCategory = {
+            id: newId,
+            label: data.label,
+            colorName: data.colorName,
+            theme: getThemeForColor(data.colorName),
+            icon: 'check',
+            checked: true
+        };
+        setCalendars([...calendars, newCalendar]);
+    };
+
+    const handleUpdateCalendar = (id: string, updates: Partial<CalendarCategory>) => {
+        setCalendars(calendars.map(cal => {
+            if (cal.id === id) {
+                const updatedCal = { ...cal, ...updates };
+                // If color changed, update theme
+                if (updates.colorName) {
+                    updatedCal.theme = getThemeForColor(updates.colorName);
+                }
+                return updatedCal;
+            }
+            return cal;
+        }));
+    };
+
+    const handleDeleteCalendar = (id: string) => {
+        setCalendars(calendars.filter(cal => cal.id !== id));
+        // You might want to update events associated with this calendar too, but for now we leave them
+        // or filter them out from view.
+    };
+
+    const toggleCalendarVisibility = (id: string) => {
+        setCalendars(calendars.map(cal =>
+            cal.id === id ? { ...cal, checked: !cal.checked } : cal
+        ));
+    };
+
+    // Filter events based on visible calendars
+    const visibleEventTypes = calendars.filter(c => c.checked).map(c => c.id);
+    const visibleEvents = events.filter(e => visibleEventTypes.includes(e.type));
+
     // Layout handling
     const renderView = () => {
         if (isLoading && events.length === 0) {
@@ -104,6 +148,17 @@ export default function Home() {
 
         const className = "flex-1 flex flex-col overflow-hidden";
 
+        // Helper to inject calendars into View props if needed, but for now Views take events.
+        // We pass 'calendars' so views can resolve themes.
+        const viewProps = {
+            currentDate,
+            events: visibleEvents,
+            calendars, // Passing calendars list for theme lookup
+            onEventClick: handleEventClick,
+            onNewEvent: handleNewEvent,
+            selectedEventId: selectedEvent?.id,
+        };
+
         switch (currentView) {
             case 'day':
                 return (
@@ -115,7 +170,7 @@ export default function Home() {
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         className={className}
                     >
-                        <DayView currentDate={currentDate} events={events} onEventClick={handleEventClick} onNewEvent={handleNewEvent} selectedEventId={selectedEvent?.id} />
+                        <DayView {...viewProps} />
                     </motion.div>
                 );
             case 'week':
@@ -129,12 +184,8 @@ export default function Home() {
                         className={className}
                     >
                         <WeekView
-                            currentDate={currentDate}
-                            events={events}
+                            {...viewProps}
                             onDateChange={setCurrentDate}
-                            onNewEvent={handleNewEvent}
-                            onEventClick={handleEventClick}
-                            selectedEventId={selectedEvent?.id}
                         />
                     </motion.div>
                 );
@@ -148,7 +199,7 @@ export default function Home() {
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         className={className}
                     >
-                        <MonthView currentDate={currentDate} events={events} onDateChange={setCurrentDate} onEventClick={handleEventClick} onNewEvent={handleNewEvent} selectedEventId={selectedEvent?.id} />
+                        <MonthView {...viewProps} onDateChange={setCurrentDate} />
                     </motion.div>
                 );
             case 'chat':
@@ -188,12 +239,8 @@ export default function Home() {
                         className={className}
                     >
                         <WeekView
-                            currentDate={currentDate}
-                            events={events}
+                            {...viewProps}
                             onDateChange={setCurrentDate}
-                            onNewEvent={handleNewEvent}
-                            onEventClick={handleEventClick}
-                            selectedEventId={selectedEvent?.id}
                         />
                     </motion.div>
                 );
@@ -213,7 +260,6 @@ export default function Home() {
     };
 
     const handleEventClick = (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => {
-        // If clicking the same event that is currently selected, close the popover (toggle behavior)
         if (selectedEvent && selectedEvent.id === event.id && selectedEventRect) {
             setSelectedEvent(undefined);
             setSelectedEventRect(null);
@@ -224,7 +270,7 @@ export default function Home() {
         setSelectedEvent(event);
         setSelectedEventRect(eventRect);
         setSelectedContainerRect(containerRect);
-        setIsModalOpen(false); // Close modal if open (unlikely), show popover
+        setIsModalOpen(false);
     };
 
     const handleNewEvent = (data?: Partial<CalendarEvent>) => {
@@ -236,7 +282,6 @@ export default function Home() {
     };
 
     const handleEditFromPopover = () => {
-        // Smooth transition: Close popover but keep selectedEvent data for the modal
         setSelectedEventRect(null);
         setIsModalOpen(true);
     };
@@ -244,20 +289,17 @@ export default function Home() {
     const handleDeleteEvent = async () => {
         if (selectedEvent) {
             try {
-                // Extract the base event ID (remove instance suffix for recurring events)
                 const eventId = selectedEvent.id.includes('_2')
                     ? selectedEvent.id.split('_').slice(0, 3).join('_')
                     : selectedEvent.id;
 
                 await deleteEventApi(eventId);
 
-                // Optimistic update - remove from local state
                 setEvents(events.filter(e => !e.id.startsWith(eventId)));
                 setSelectedEventRect(null);
                 setSelectedContainerRect(null);
                 setSelectedEvent(undefined);
 
-                // Reload to ensure consistency
                 loadEvents();
             } catch (error) {
                 console.error('Failed to delete event:', error);
@@ -268,14 +310,12 @@ export default function Home() {
     const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
         try {
             if (selectedEvent) {
-                // Update existing - extract base event ID for recurring events
                 const eventId = selectedEvent.id.includes('_2')
                     ? selectedEvent.id.split('_').slice(0, 3).join('_')
                     : selectedEvent.id;
 
                 await updateEventApi(eventId, eventData);
             } else {
-                // Create new
                 const newEventData = {
                     title: eventData.title || '(No Title)',
                     start: eventData.start || new Date(),
@@ -288,11 +328,8 @@ export default function Home() {
                 await createEventApi(newEventData);
             }
 
-            // Clear selection after save to reset state
             setSelectedEvent(undefined);
             setInitialEventData(undefined);
-
-            // Reload events to reflect changes
             loadEvents();
         } catch (error) {
             console.error('Failed to save event:', error);
@@ -300,12 +337,7 @@ export default function Home() {
     };
 
     const handleBackgroundClick = (e: React.MouseEvent) => {
-        // Prevent closing if modal is open (as clicks bubble from modal)
         if (isModalOpen) return;
-
-        // If a popover is open and we click background (outside popover and outside event), close it
-        // Note: Clicks on events stop propagation, so they won't trigger this.
-        // Clicks on popover stop propagation, so they won't trigger this.
         if (selectedEventRect) {
             setSelectedEvent(undefined);
             setSelectedEventRect(null);
@@ -316,7 +348,6 @@ export default function Home() {
     return (
         <div onClick={handleBackgroundClick} className="flex flex-col h-screen bg-background-dark text-gray-200 overflow-hidden font-sans">
 
-            {/* Create/Edit Event Modal - Full Edit Mode */}
             <CreateEventModal
                 isOpen={isModalOpen}
                 onClose={() => { setIsModalOpen(false); setSelectedEvent(undefined); setInitialEventData(undefined); }}
@@ -324,9 +355,9 @@ export default function Home() {
                 defaultDate={currentDate}
                 event={selectedEvent}
                 initialData={initialEventData}
+                calendars={calendars} // Pass calendars
             />
 
-            {/* Event Summary Popover - Read Only / Quick Actions */}
             <AnimatePresence>
                 {selectedEvent && selectedEventRect && selectedContainerRect && (
                     <EventSummaryPopover
@@ -337,14 +368,13 @@ export default function Home() {
                         onClose={() => { setSelectedEventRect(null); setSelectedContainerRect(null); setSelectedEvent(undefined); }}
                         onEdit={handleEditFromPopover}
                         onDelete={handleDeleteEvent}
+                        calendars={calendars} // Pass calendars
                     />
                 )}
             </AnimatePresence>
 
-            {/* Global Header - Flex Item, not fixed */}
             <header className="h-16 flex-none border-b border-border-dark bg-surface-dark z-50 flex items-center justify-between px-4 relative">
-                {/* Left Section: Date & Navigation */}
-                <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -357,11 +387,13 @@ export default function Home() {
                             </svg>
                         </button>
                         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setCurrentView('month')}>
-                            <h1 className="text-xl font-bold tracking-tight text-white hidden md:block">
+                            <h1 className="text-xl font-bold tracking-tight text-white hidden md:block min-w-[200px]">
                                 {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                             </h1>
                         </div>
                     </div>
+
+                    <div className="h-6 w-px bg-zinc-700/50" />
 
                     <div className="flex items-center space-x-1">
                         <button onClick={() => handleDateNav('prev')} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors">
@@ -373,12 +405,10 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* Center Section: View Switcher - Positioned Absolutely */}
                 <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
                     <ViewSwitcher currentView={currentView} onChange={setCurrentView} />
                 </div>
 
-                {/* Right Section: Tools */}
                 <div className="flex items-center">
                     <button
                         onClick={() => setCurrentDate(new Date())}
@@ -394,7 +424,6 @@ export default function Home() {
                 </div>
             </header>
 
-            {/* Main Content Layout */}
             <div className="flex flex-1 overflow-hidden relative w-full">
                 <AnimatePresence mode="wait">
                     {isSidebarOpen && (
@@ -405,12 +434,19 @@ export default function Home() {
                             transition={{ duration: 0.3, ease: "easeInOut" }}
                             className="flex-shrink-0 overflow-hidden h-full flex"
                         >
-                            <Sidebar currentDate={currentDate} onDateChange={setCurrentDate} />
+                            <Sidebar
+                                currentDate={currentDate}
+                                onDateChange={setCurrentDate}
+                                calendars={calendars}
+                                onAddCalendar={handleAddCalendar}
+                                onUpdateCalendar={handleUpdateCalendar}
+                                onDeleteCalendar={handleDeleteCalendar}
+                                onToggleCalendar={toggleCalendarVisibility}
+                            />
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* View Area */}
                 <main className="flex-1 flex flex-col min-w-0 bg-background-dark relative overflow-hidden transition-all duration-300 ease-in-out">
                     <AnimatePresence mode="wait" initial={false}>
                         {renderView()}

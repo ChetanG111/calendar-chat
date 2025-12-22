@@ -1,19 +1,31 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarEvent, EVENT_THEMES } from '@/types';
+import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { arrangeEvents } from '@/lib/utils';
+import { getThemeForColor } from '@/types';
 
 interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
+  calendars?: CalendarCategory[];
   onDateChange: (date: Date) => void;
   onNewEvent?: (data?: Partial<CalendarEvent>) => void;
   onEventClick?: (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => void;
   selectedEventId?: string;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, onNewEvent, onEventClick, selectedEventId }) => {
+const defaultTheme: CalendarTheme = {
+  primary: 'blue',
+  bg: 'bg-blue-500/20',
+  border: 'border-blue-500',
+  text: 'text-blue-100',
+  dot: 'bg-blue-500',
+  hover: 'hover:bg-blue-500/30',
+  solidBg: 'bg-blue-500'
+};
+
+const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onDateChange, onNewEvent, onEventClick, selectedEventId }) => {
   // Calculate start of week (Sunday)
   const startOfWeek = new Date(currentDate);
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
@@ -28,7 +40,6 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
   const hours = Array.from({ length: 24 }, (_, i) => i); // 0 to 23
 
   // State for current time indicator position
-  // Initialize with current time so it renders immediately
   const [currentTimePosition, setCurrentTimePosition] = useState<number>(() => {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
@@ -51,9 +62,6 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
       d.getMonth() === today.getMonth() &&
       d.getFullYear() === today.getFullYear();
   };
-
-  // Check if today is in the current view
-  const isTodayInView = weekDays.some(day => isToday(day));
 
   return (
     <div className="flex flex-1 flex-col min-w-0 bg-background-dark relative h-full">
@@ -111,8 +119,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                 })}
               >
                 {/* All Day Events for this day */}
-                {events.filter(e => e.isAllDay && e.start.getDay() === day.getDay()).map(e => {
-                  const theme = EVENT_THEMES[e.type] || EVENT_THEMES.business;
+                {events.filter(e => {
+                  const dayStart = new Date(day);
+                  dayStart.setHours(0, 0, 0, 0);
+                  const dayEnd = new Date(day);
+                  dayEnd.setHours(23, 59, 59, 999);
+                  return e.isAllDay && e.start >= dayStart && e.start <= dayEnd;
+                }).map(e => {
+                  const theme = calendars?.find(c => c.id === e.type)?.theme || defaultTheme;
                   return (
                     <div
                       key={e.id}
@@ -174,14 +188,15 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                   {/* Events for this day */}
                   {arrangeEvents(events.filter(e => {
                     if (e.isAllDay) return false;
-                    if (e.start.getDay() !== dayIdx) return false;
-                    const eventDate = e.start;
-                    if (eventDate < weekDays[0] || eventDate > weekDays[6]) return false;
-                    return true;
+                    const dayStart = new Date(day);
+                    dayStart.setHours(0, 0, 0, 0);
+                    const dayEnd = new Date(day);
+                    dayEnd.setHours(23, 59, 59, 999);
+                    return e.start >= dayStart && e.start <= dayEnd;
                   })).map(({ event, style }) => {
                     const startMin = event.start.getHours() * 60 + event.start.getMinutes();
                     const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
-                    const theme = EVENT_THEMES[event.type] || EVENT_THEMES.business;
+                    const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
 
                     return (
                       <div

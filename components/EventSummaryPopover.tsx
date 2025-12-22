@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { CalendarEvent, EVENT_THEMES } from '@/types';
+import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { motion, Variants } from 'framer-motion';
 
 interface EventSummaryPopoverProps {
@@ -11,6 +11,7 @@ interface EventSummaryPopoverProps {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  calendars?: CalendarCategory[];
 }
 
 const containerVariants: Variants = {
@@ -60,10 +61,20 @@ const itemVariants: Variants = {
   }
 };
 
-const EventSummaryPopover: React.FC<EventSummaryPopoverProps> = ({ event, anchorRect, containerRect, onClose, onEdit, onDelete }) => {
+const defaultTheme: CalendarTheme = {
+  primary: 'blue',
+  bg: 'bg-blue-500/20',
+  border: 'border-blue-500',
+  text: 'text-blue-100',
+  dot: 'bg-blue-500',
+  hover: 'hover:bg-blue-500/30',
+  solidBg: 'bg-blue-500'
+};
+
+const EventSummaryPopover: React.FC<EventSummaryPopoverProps> = ({ event, anchorRect, containerRect, onClose, onEdit, onDelete, calendars }) => {
   if (!anchorRect || !containerRect) return null;
 
-  const theme = EVENT_THEMES[event.type];
+  const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
   const durationMinutes = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
   const hours = Math.floor(durationMinutes / 60);
   const mins = durationMinutes % 60;
@@ -93,7 +104,7 @@ const EventSummaryPopover: React.FC<EventSummaryPopoverProps> = ({ event, anchor
             <span className="material-symbols-outlined text-[18px]">delete</span>
           </button>
           <button className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-white/10 rounded-full transition-colors">
-            <span className="material-symbols-outlined text-[18px]">more_horiz</span>
+            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
           </button>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-white/10 rounded-full transition-colors">
             <span className="material-symbols-outlined text-[18px]">close</span>
@@ -174,7 +185,7 @@ const EventSummaryPopover: React.FC<EventSummaryPopoverProps> = ({ event, anchor
             <div className="flex-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${theme.dot}`}></div>
-                <span className="text-sm text-[#e8eaed] capitalize">{event.type}</span>
+                <span className="text-sm text-[#e8eaed] capitalize">{calendars?.find(c => c.id === event.type)?.label || event.type}</span>
               </div>
               <div className="flex gap-2 text-xs text-[#9aa0a6]">
                 <span>Busy</span>

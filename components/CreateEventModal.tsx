@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarEvent } from '@/types';
+import { CalendarEvent, CalendarCategory } from '@/types';
 import TimePicker from './TimePicker';
 
 interface CreateEventModalProps {
@@ -11,15 +11,17 @@ interface CreateEventModalProps {
     defaultDate?: Date;
     event?: CalendarEvent;
     initialData?: Partial<CalendarEvent>;
+    calendars?: CalendarCategory[];
 }
 
-const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, onSave, defaultDate, event, initialData }) => {
+const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, onSave, defaultDate, event, initialData, calendars = [] }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState('');
     const [startTime, setStartTime] = useState('10:00');
     const [endTime, setEndTime] = useState('10:45');
-    const [eventType, setEventType] = useState<'business' | 'personal' | 'meetings' | 'holiday'>('personal');
+    // Default to first calendar or personal or whatever is available
+    const [eventType, setEventType] = useState<string>('personal');
     const [isAllDay, setIsAllDay] = useState(false);
 
     // Dragging state
@@ -86,7 +88,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 setTitle(data.title || '');
                 setDescription(data.description || '');
                 setLocation(data.location || '');
-                setEventType(data.type || 'personal');
+                // Default to a valid calendar ID or 'personal'
+                setEventType(data.type || (calendars.length > 0 ? calendars[0].id : 'personal'));
 
                 // If initialData has start/end, use them
                 if (data.start) {
@@ -104,7 +107,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 setIsAllDay(data.isAllDay || false);
             }
         }
-    }, [event, isOpen, defaultDate, initialData]);
+    }, [event, isOpen, defaultDate, initialData, calendars]);
 
     // Drag Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -152,10 +155,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
         // Basic date construction logic
         const baseDate = event ? event.start : (defaultDate || new Date());
 
-        // If all day, we might want to just keep the date part, but for now we keep the time logic or set meaningful defaults?
-        // Usually all day events start at 00:00 or ignore time.
-        // Let's rely on date part of baseDate
-
         let start = new Date(baseDate);
         let end = new Date(baseDate);
 
@@ -186,6 +185,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
 
         onClose();
     };
+
+    // Helper to find calendar details
+    const selectedCalendar = calendars.find(c => c.id === eventType) || calendars[0];
 
     return (
         <div
@@ -306,14 +308,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                         className="flex items-center gap-2 hover:bg-[#303134] px-3 py-1.5 -ml-3 rounded transition-colors group/cal cursor-pointer outline-none w-full text-left"
                                     >
-                                        <div className={`w-3.5 h-3.5 rounded-full ${eventType === 'business' ? 'bg-blue-500' :
-                                            eventType === 'personal' ? 'bg-red-500' :
-                                                eventType === 'meetings' ? 'bg-orange-500' :
-                                                    'bg-green-500'
-                                            }`}></div>
+                                        <div className={`w-3.5 h-3.5 rounded-full ${selectedCalendar?.theme?.solidBg || 'bg-blue-500'}`}></div>
                                         <span className="text-[#e8eaed] text-sm font-medium">
-                                            {eventType === 'personal' ? 'Leslie Alexander' :
-                                                eventType.charAt(0).toUpperCase() + eventType.slice(1)}
+                                            {selectedCalendar?.label || 'Calendar'}
                                         </span>
                                         <span className={`material-symbols-outlined text-[#9aa0a6] text-[20px] transition-transform duration-200 ml-auto ${isDropdownOpen ? 'rotate-180' : ''}`}>
                                             arrow_drop_down
@@ -323,24 +320,19 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                                     {/* Dropdown Menu */}
                                     {isDropdownOpen && (
                                         <div className="absolute bottom-full left-0 mb-1 w-56 bg-[#202124] border border-[#5f6368] rounded-lg shadow-xl z-[70] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 origin-bottom-left">
-                                            {[
-                                                { id: 'personal', label: 'Leslie Alexander', color: 'bg-red-500' },
-                                                { id: 'business', label: 'Business', color: 'bg-blue-500' },
-                                                { id: 'meetings', label: 'Meetings', color: 'bg-orange-500' },
-                                                { id: 'holiday', label: 'Holiday', color: 'bg-green-500' }
-                                            ].map((option) => (
+                                            {calendars.map((option) => (
                                                 <button
                                                     key={option.id}
                                                     type="button"
                                                     onClick={() => {
-                                                        setEventType(option.id as any);
+                                                        setEventType(option.id);
                                                         setIsDropdownOpen(false);
                                                     }}
                                                     className={`w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm transition-colors
                                                         ${eventType === option.id ? 'bg-[#1967d2] text-white' : 'text-[#e8eaed] hover:bg-[#3c4043]'}
                                                     `}
                                                 >
-                                                    <div className={`w-2.5 h-2.5 rounded-full ${option.color} ${eventType === option.id ? 'ring-2 ring-white/50' : ''}`}></div>
+                                                    <div className={`w-2.5 h-2.5 rounded-full ${option.theme.solidBg} ${eventType === option.id ? 'ring-2 ring-white/50' : ''}`}></div>
                                                     <span className="flex-1 truncate">{option.label}</span>
                                                     {eventType === option.id && (
                                                         <span className="material-symbols-outlined text-[18px]">check</span>

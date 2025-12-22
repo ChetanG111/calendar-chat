@@ -1,18 +1,30 @@
 "use client";
 
 import React, { useRef } from 'react';
-import { CalendarEvent, EVENT_THEMES } from '@/types';
+import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
+import { getThemeForColor } from '@/types';
 
 interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
+  calendars?: CalendarCategory[];
   onDateChange: (date: Date) => void;
   onEventClick?: (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => void;
-  onNewEvent?: () => void;
+  onNewEvent?: (data?: Partial<CalendarEvent>) => void;
   selectedEventId?: string;
 }
 
-const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange, onEventClick, onNewEvent, selectedEventId }) => {
+const defaultTheme: CalendarTheme = {
+  primary: 'blue',
+  bg: 'bg-blue-500/20',
+  border: 'border-blue-500',
+  text: 'text-blue-100',
+  dot: 'bg-blue-500',
+  hover: 'hover:bg-blue-500/30',
+  solidBg: 'bg-blue-500'
+};
+
+const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, onDateChange, onEventClick, onNewEvent, selectedEventId }) => {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,7 +72,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
               onDoubleClick={() => {
                 // Clicking a cell now triggers new event instead of navigation
                 onDateChange(cell.date); // optional: still update current date context
-                if (onNewEvent) onNewEvent();
+                if (onNewEvent) onNewEvent({ start: cell.date, end: cell.date });
               }}
               className={`min-h-[120px] border-b border-r border-border-dark p-2 relative group hover:bg-white/5 transition-colors cursor-pointer select-none
                 ${cell.type !== 'current' ? 'bg-black/20' : ''}
@@ -77,7 +89,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onDateChange
 
               <div className="space-y-1">
                 {dayEvents.slice(0, 3).map(ev => {
-                  const theme = EVENT_THEMES[ev.type] || EVENT_THEMES.business;
+                  const theme = calendars?.find(c => c.id === ev.type)?.theme || defaultTheme;
                   return (
                     <div
                       key={ev.id}
