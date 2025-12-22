@@ -15,7 +15,7 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
     const periodRef = useRef<HTMLButtonElement>(null);
 
     // Parse current value
-    const [hours24, minutes] = value.split(':').map(Number);
+    const [hours24 = 0, minutes = 0] = (value || '00:00').split(':').map(Number);
     const period = hours24 >= 12 ? 'PM' : 'AM';
     const displayHours = hours24 % 12 || 12; // Convert 0 to 12
 

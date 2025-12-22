@@ -7,8 +7,7 @@ import DayView from '@/components/DayView';
 import WeekView from '@/components/WeekView';
 import MonthView from '@/components/MonthView';
 import ChatView from '@/components/ChatView';
-import CreateEventModal from '@/components/CreateEventModal';
-import EventSummaryPopover from '@/components/EventSummaryPopover';
+import EventPanel, { EventPanelMode } from '@/components/EventPanel';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft } from '@/components/animate-ui/icons/chevron-left';
@@ -30,7 +29,6 @@ export default function Home() {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [calendars, setCalendars] = useState<CalendarCategory[]>(DEFAULT_CALENDARS);
     const [isLoading, setIsLoading] = useState(true);
-    const [initialEventData, setInitialEventData] = useState<Partial<CalendarEvent> | undefined>(undefined);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     // Responsive sidebar init
@@ -50,11 +48,13 @@ export default function Home() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
-    // Selection State
+    // Event Panel State
+    const [isPanelOpen, setIsPanelOpen] = useState(false);
+    const [panelMode, setPanelMode] = useState<EventPanelMode>('view');
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(undefined);
+    const [initialEventData, setInitialEventData] = useState<Partial<CalendarEvent> | undefined>(undefined);
+
+    // Selection State (kept for highlighting, though panel doesn't position based on them anymore)
     const [selectedEventRect, setSelectedEventRect] = useState<DOMRect | null>(null);
     const [selectedContainerRect, setSelectedContainerRect] = useState<DOMRect | null>(null);
 
@@ -272,17 +272,17 @@ export default function Home() {
     };
 
     const handleEventClick = (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => {
-        if (selectedEvent && selectedEvent.id === event.id && selectedEventRect) {
-            setSelectedEvent(undefined);
-            setSelectedEventRect(null);
-            setSelectedContainerRect(null);
+        if (selectedEvent && selectedEvent.id === event.id && isPanelOpen && panelMode === 'view') {
+             // Close if already open on same event in view mode
+            handleClosePanel();
             return;
         }
 
         setSelectedEvent(event);
         setSelectedEventRect(eventRect);
         setSelectedContainerRect(containerRect);
-        setIsModalOpen(false);
+        setPanelMode('view');
+        setIsPanelOpen(true);
     };
 
     const handleNewEvent = (data?: Partial<CalendarEvent>) => {
@@ -290,26 +290,28 @@ export default function Home() {
         setSelectedEventRect(null);
         setSelectedContainerRect(null);
         setInitialEventData(data);
-        setIsModalOpen(true);
+        setPanelMode('create');
+        setIsPanelOpen(true);
     };
 
-    const handleEditFromPopover = () => {
-        setSelectedEventRect(null);
-        setIsModalOpen(true);
+    const handleClosePanel = () => {
+        setIsPanelOpen(false);
+        // Delay clearing selection to allow exit animation to look good
+        setTimeout(() => {
+            setSelectedEvent(undefined);
+            setSelectedEventRect(null);
+            setSelectedContainerRect(null);
+            setInitialEventData(undefined);
+        }, 300);
     };
 
     const handleDeleteEvent = async () => {
         if (selectedEvent) {
             try {
                 const eventId = selectedEvent.eventId || selectedEvent.id;
-
                 await deleteEventApi(eventId);
-
                 setEvents(events.filter(e => !e.id.startsWith(eventId)));
-                setSelectedEventRect(null);
-                setSelectedContainerRect(null);
-                setSelectedEvent(undefined);
-
+                handleClosePanel();
                 loadEvents();
             } catch (error) {
                 console.error('Failed to delete event:', error);
@@ -319,7 +321,7 @@ export default function Home() {
 
     const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
         try {
-            if (selectedEvent) {
+            if (selectedEvent && panelMode === 'edit') {
                 const eventId = selectedEvent.id.includes('_2')
                     ? selectedEvent.id.split('_').slice(0, 3).join('_')
                     : selectedEvent.id;
@@ -338,8 +340,7 @@ export default function Home() {
                 await createEventApi(newEventData);
             }
 
-            setSelectedEvent(undefined);
-            setInitialEventData(undefined);
+            handleClosePanel();
             loadEvents();
         } catch (error) {
             console.error('Failed to save event:', error);
@@ -347,47 +348,34 @@ export default function Home() {
     };
 
     const handleBackgroundClick = (e: React.MouseEvent) => {
-        if (isModalOpen) return;
-        if (selectedEventRect) {
-            setSelectedEvent(undefined);
-            setSelectedEventRect(null);
-            setSelectedContainerRect(null);
+        // If clicking background, close panel
+        // But need to ensure we aren't clicking inside the panel (propagated)
+        // The Panel stops propagation on click, so this should catch clicks on the main background
+        if (isPanelOpen) {
+            handleClosePanel();
         }
     };
 
     return (
         <div onClick={handleBackgroundClick} className="flex flex-col h-screen bg-background-dark text-gray-200 overflow-hidden font-sans">
 
-            <CreateEventModal
-                isOpen={isModalOpen}
-                onClose={() => { setIsModalOpen(false); setSelectedEvent(undefined); setInitialEventData(undefined); }}
-                onSave={handleSaveEvent}
-                defaultDate={currentDate}
+            <EventPanel
+                isOpen={isPanelOpen}
+                mode={panelMode}
                 event={selectedEvent}
                 initialData={initialEventData}
-                calendars={calendars} // Pass calendars
+                onClose={handleClosePanel}
+                onEdit={() => setPanelMode('edit')}
+                onDelete={handleDeleteEvent}
+                onSave={handleSaveEvent}
+                calendars={calendars}
             />
-
-            <AnimatePresence>
-                {selectedEvent && selectedEventRect && selectedContainerRect && (
-                    <EventSummaryPopover
-                        key="event-summary-popover"
-                        event={selectedEvent}
-                        anchorRect={selectedEventRect}
-                        containerRect={selectedContainerRect}
-                        onClose={() => { setSelectedEventRect(null); setSelectedContainerRect(null); setSelectedEvent(undefined); }}
-                        onEdit={handleEditFromPopover}
-                        onDelete={handleDeleteEvent}
-                        calendars={calendars} // Pass calendars
-                    />
-                )}
-            </AnimatePresence>
 
             <header className="h-16 flex-none border-b border-border-dark bg-surface-dark z-50 flex items-center justify-between px-4 relative">
                 <div className="flex items-center gap-6">
                     {/* Sidebar Toggle */}
                     <button
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(!isSidebarOpen); }}
                         className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus:outline-none"
                         aria-label="Toggle Sidebar"
                     >
@@ -400,16 +388,16 @@ export default function Home() {
 
                     {/* Date Navigation Group */}
                     <div className="flex items-center gap-2">
-                        <button onClick={() => handleDateNav('prev')} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                        <button onClick={(e) => { e.stopPropagation(); handleDateNav('prev'); }} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
                             <ChevronLeft size={18} animateOnHover />
                         </button>
                         <h1
                             className="text-lg font-semibold tracking-tight text-white hidden md:block min-w-[180px] text-center cursor-pointer hover:text-gray-300 transition-colors"
-                            onClick={() => setCurrentView('month')}
+                            onClick={(e) => { e.stopPropagation(); setCurrentView('month'); }}
                         >
                             {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </h1>
-                        <button onClick={() => handleDateNav('next')} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                        <button onClick={(e) => { e.stopPropagation(); handleDateNav('next'); }} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
                             <ChevronRight size={18} animateOnHover />
                         </button>
                     </div>
@@ -423,7 +411,7 @@ export default function Home() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentDate(new Date())}
+                        onClick={(e) => { e.stopPropagation(); setCurrentDate(new Date()); }}
                         className="mr-4 text-gray-300 border-zinc-600 bg-transparent hover:bg-white/10 hover:text-white hover:border-zinc-500"
                         hoverScale={1.02}
                         tapScale={0.98}
@@ -447,6 +435,7 @@ export default function Home() {
                             exit={{ width: 0, opacity: 0 }}
                             transition={{ duration: 0.3, ease: "easeInOut" }}
                             className="flex-shrink-0 overflow-hidden h-full flex"
+                            onClick={(e) => e.stopPropagation()} // Sidebar shouldn't close panel
                         >
                             <Sidebar
                                 currentDate={currentDate}
