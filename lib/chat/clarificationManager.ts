@@ -190,13 +190,57 @@ export class ClarificationManager {
 
     /**
      * Parse relative date/time expressions
-     * This is a simple implementation - in production, use a proper NLP library
+     * Enhanced for forgiving input handling with natural time expressions
      */
     private parseRelativeDateTime(message: string): string | null {
         const now = new Date();
         const normalized = message.toLowerCase().trim();
 
-        // Time patterns
+        // Natural time expressions (forgiving parsing)
+        const timeHeuristics: Record<string, { hour: number; minute: number }> = {
+            'morning': { hour: 9, minute: 0 },
+            'in the morning': { hour: 9, minute: 0 },
+            'am': { hour: 9, minute: 0 },
+            'noon': { hour: 12, minute: 0 },
+            'at noon': { hour: 12, minute: 0 },
+            'lunch': { hour: 12, minute: 0 },
+            'after lunch': { hour: 13, minute: 0 },
+            'post lunch': { hour: 13, minute: 0 },
+            'afternoon': { hour: 14, minute: 0 },
+            'in the afternoon': { hour: 14, minute: 0 },
+            'evening': { hour: 18, minute: 0 },
+            'in the evening': { hour: 18, minute: 0 },
+            'tonight': { hour: 19, minute: 0 },
+            'night': { hour: 20, minute: 0 },
+            'at night': { hour: 20, minute: 0 },
+            'end of day': { hour: 17, minute: 0 },
+            'eod': { hour: 17, minute: 0 },
+            'close of business': { hour: 17, minute: 0 },
+            'cob': { hour: 17, minute: 0 },
+        };
+
+        // Check for natural time expressions first
+        for (const [expr, time] of Object.entries(timeHeuristics)) {
+            if (normalized.includes(expr)) {
+                const date = new Date(now);
+
+                // Check for "tomorrow" modifier
+                if (normalized.includes('tomorrow')) {
+                    date.setDate(date.getDate() + 1);
+                }
+
+                date.setHours(time.hour, time.minute, 0, 0);
+
+                // If the time is in the past today and no tomorrow modifier, assume tomorrow
+                if (date < now && !normalized.includes('tomorrow')) {
+                    date.setDate(date.getDate() + 1);
+                }
+
+                return date.toISOString().substring(0, 16); // Without offset
+            }
+        }
+
+        // Time patterns (3pm, 3:30pm, 15:00)
         const timeMatch = normalized.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
         if (timeMatch) {
             let hours = parseInt(timeMatch[1], 10);
@@ -207,10 +251,16 @@ export class ClarificationManager {
             if (meridian === 'am' && hours === 12) hours = 0;
 
             const date = new Date(now);
+
+            // Check for "tomorrow" modifier
+            if (normalized.includes('tomorrow')) {
+                date.setDate(date.getDate() + 1);
+            }
+
             date.setHours(hours, minutes, 0, 0);
 
-            // If the time is in the past today, assume tomorrow
-            if (date < now) {
+            // If the time is in the past today and no tomorrow modifier, assume tomorrow
+            if (date < now && !normalized.includes('tomorrow')) {
                 date.setDate(date.getDate() + 1);
             }
 
@@ -223,6 +273,16 @@ export class ClarificationManager {
             tomorrow.setDate(tomorrow.getDate() + 1);
             tomorrow.setHours(9, 0, 0, 0); // Default to 9 AM
             return tomorrow.toISOString().substring(0, 16);
+        }
+
+        if (normalized.includes('today')) {
+            const today = new Date(now);
+            today.setHours(9, 0, 0, 0);
+            // If 9am already passed, set to next hour
+            if (today < now) {
+                today.setHours(now.getHours() + 1, 0, 0, 0);
+            }
+            return today.toISOString().substring(0, 16);
         }
 
         if (normalized.includes('next week')) {
@@ -244,6 +304,22 @@ export class ClarificationManager {
                 target.setHours(9, 0, 0, 0);
                 return target.toISOString().substring(0, 16);
             }
+        }
+
+        // Duration expressions (in 1 hour, in 30 minutes)
+        const durationMatch = normalized.match(/in\s+(\d+)\s*(hour|hr|minute|min)s?/i);
+        if (durationMatch) {
+            const amount = parseInt(durationMatch[1], 10);
+            const unit = durationMatch[2].toLowerCase();
+            const target = new Date(now);
+
+            if (unit.startsWith('hour') || unit.startsWith('hr')) {
+                target.setHours(target.getHours() + amount);
+            } else if (unit.startsWith('min')) {
+                target.setMinutes(target.getMinutes() + amount);
+            }
+
+            return target.toISOString().substring(0, 16);
         }
 
         return null;

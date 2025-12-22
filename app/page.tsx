@@ -167,6 +167,10 @@ export default function Home() {
                                 setCurrentDate(new Date());
                                 setCurrentView('day');
                             }}
+                            onNavigateToEvent={(date) => {
+                                setCurrentDate(date);
+                                setCurrentView('day');
+                            }}
                             onEventCreated={() => loadEvents()}
                             onEventUpdated={() => loadEvents()}
                             onEventDeleted={() => loadEvents()}

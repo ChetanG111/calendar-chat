@@ -27,8 +27,7 @@ export default function ViewSwitcher({ currentView, onChange }: ViewSwitcherProp
 
                 return (
                     <React.Fragment key={item.id}>
-                        {/* Separator before Chat */}
-                        {isChat && <div className="w-px h-4 bg-zinc-700 mx-1 self-center" />}
+
 
                         <button
                             onClick={() => onChange(item.id)}
@@ -46,7 +45,7 @@ export default function ViewSwitcher({ currentView, onChange }: ViewSwitcherProp
                                     layoutId="active-pill"
                                     className={clsx(
                                         "absolute inset-0 shadow-sm z-[-1]",
-                                        isChat ? "bg-primary" : "bg-zinc-600"
+                                        "bg-primary"
                                     )}
                                     style={{ borderRadius: 6 }}
                                     transition={{

@@ -306,10 +306,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                         className="flex items-center gap-2 hover:bg-[#303134] px-3 py-1.5 -ml-3 rounded transition-colors group/cal cursor-pointer outline-none w-full text-left"
                                     >
-                                        <div className={`w-3.5 h-3.5 rounded-full ${eventType === 'business' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
-                                            eventType === 'personal' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
-                                                eventType === 'meetings' ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
-                                                    'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]'
+                                        <div className={`w-3.5 h-3.5 rounded-full ${eventType === 'business' ? 'bg-blue-500' :
+                                            eventType === 'personal' ? 'bg-red-500' :
+                                                eventType === 'meetings' ? 'bg-orange-500' :
+                                                    'bg-green-500'
                                             }`}></div>
                                         <span className="text-[#e8eaed] text-sm font-medium">
                                             {eventType === 'personal' ? 'Leslie Alexander' :
@@ -356,7 +356,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                         {/* Footer Actions */}
                         <div className="flex justify-end pt-6 gap-3">
                             <button onClick={onClose} className="px-5 py-2.5 rounded text-sm font-medium text-[#e8eaed] hover:bg-[#303134] transition-colors">Cancel</button>
-                            <button onClick={handleSave} className="px-8 py-2.5 rounded text-sm font-medium bg-primary text-white hover:brightness-110 transition-colors shadow-lg shadow-emerald-900/20 font-semibold tracking-wide">Save</button>
+                            <button onClick={handleSave} className="px-8 py-2.5 rounded text-sm font-medium bg-primary text-white hover:brightness-110 transition-colors shadow-lg font-semibold tracking-wide">Save</button>
                         </div>
                     </div>
                 </div>

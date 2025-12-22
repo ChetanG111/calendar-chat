@@ -6,6 +6,11 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+    /* Primary Accent Color: #0169cc (RGB: 1 105 204) */
+    --primary: 1 105 204;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

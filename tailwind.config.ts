@@ -20,7 +20,7 @@ const config: Config = {
     theme: {
         extend: {
             colors: {
-                primary: "#34d399", // Emerald-400
+                primary: "rgb(var(--primary) / <alpha-value>)",
                 secondary: "#3b82f6", // Blue-500
                 "background-dark": "#09090b", // Zinc-950
                 "surface-dark": "#18181b", // Zinc-900

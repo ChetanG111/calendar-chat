@@ -22,6 +22,7 @@ interface ChatMessage {
 interface ChatViewProps {
   onViewChange?: (view: ViewType) => void;
   onNavigateToday?: () => void;
+  onNavigateToEvent?: (date: Date) => void;
   onEventCreated?: (event: CalendarEvent) => void;
   onEventUpdated?: (event: CalendarEvent) => void;
   onEventDeleted?: (event: CalendarEvent) => void;
@@ -75,7 +76,7 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
-function AssistantMessage({ message }: { message: ChatMessage }) {
+function AssistantMessage({ message, onNavigateToEvent }: { message: ChatMessage; onNavigateToEvent?: (date: Date) => void }) {
   const isSuccess = message.content.startsWith('✅');
   const isError = message.content.startsWith('❌');
 
@@ -106,14 +107,23 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
 
             {/* Show event card if one was created/updated */}
             {message.event && (
-              <EventCard event={message.event} intent={message.intent} />
+              <EventCard
+                event={message.event}
+                intent={message.intent}
+                onNavigateToEvent={onNavigateToEvent}
+              />
             )}
 
             {/* Show list of events if query result */}
             {message.events && message.events.length > 0 && message.intent === 'queried' && (
               <div className="space-y-2 mt-2">
                 {message.events.map((event, index) => (
-                  <EventCard key={event.id || index} event={event} compact />
+                  <EventCard
+                    key={event.id || index}
+                    event={event}
+                    compact
+                    onNavigateToEvent={onNavigateToEvent}
+                  />
                 ))}
               </div>
             )}
@@ -124,7 +134,12 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
   );
 }
 
-function EventCard({ event, intent, compact }: { event: CalendarEvent; intent?: string; compact?: boolean }) {
+function EventCard({ event, intent, compact, onNavigateToEvent }: {
+  event: CalendarEvent;
+  intent?: string;
+  compact?: boolean;
+  onNavigateToEvent?: (date: Date) => void;
+}) {
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -142,21 +157,27 @@ function EventCard({ event, intent, compact }: { event: CalendarEvent; intent?: 
   };
 
   const typeColors = {
-    business: 'border-blue-500 bg-blue-500/10',
-    personal: 'border-red-500 bg-red-500/10',
-    meetings: 'border-orange-500 bg-orange-500/10',
-    holiday: 'border-green-500 bg-green-500/10',
+    business: 'border-blue-500 bg-blue-500/10 hover:bg-blue-500/20',
+    personal: 'border-red-500 bg-red-500/10 hover:bg-red-500/20',
+    meetings: 'border-orange-500 bg-orange-500/10 hover:bg-orange-500/20',
+    holiday: 'border-green-500 bg-green-500/10 hover:bg-green-500/20',
   };
 
   return (
-    <div className={clsx(
-      "rounded-lg border-l-4 p-3",
-      typeColors[event.type] || typeColors.personal,
-      compact ? 'bg-surface-dark/50' : 'bg-surface-dark'
-    )}>
+    <div
+      onClick={() => onNavigateToEvent?.(new Date(event.start))}
+      className={clsx(
+        "rounded-lg border-l-4 p-3 transition-colors cursor-pointer group",
+        typeColors[event.type] || typeColors.personal,
+        compact ? 'bg-surface-dark/50' : 'bg-surface-dark'
+      )}
+      role="button"
+      tabIndex={0}
+      title="View in calendar"
+    >
       <div className="flex items-start justify-between">
         <div>
-          <h4 className="font-medium text-white">{event.title}</h4>
+          <h4 className="font-medium text-white group-hover:underline decoration-white/30 underline-offset-4">{event.title}</h4>
           <p className="text-sm text-gray-400 mt-0.5">
             {event.isAllDay ? (
               formatDate(event.start)
@@ -170,6 +191,11 @@ function EventCard({ event, intent, compact }: { event: CalendarEvent; intent?: 
             Recurring
           </span>
         )}
+
+        {/* Hover indicator icon */}
+        <span className="material-symbols-outlined text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+          arrow_forward
+        </span>
       </div>
     </div>
   );
@@ -182,6 +208,7 @@ function EventCard({ event, intent, compact }: { event: CalendarEvent; intent?: 
 const ChatView: React.FC<ChatViewProps> = ({
   onViewChange,
   onNavigateToday,
+  onNavigateToEvent,
   onEventCreated,
   onEventUpdated,
   onEventDeleted,
@@ -332,7 +359,11 @@ const ChatView: React.FC<ChatViewProps> = ({
               message.role === 'user' ? (
                 <UserMessage key={message.id} content={message.content} />
               ) : (
-                <AssistantMessage key={message.id} message={message} />
+                <AssistantMessage
+                  key={message.id}
+                  message={message}
+                  onNavigateToEvent={onNavigateToEvent}
+                />
               )
             ))
           )}

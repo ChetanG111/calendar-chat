@@ -21,6 +21,10 @@ export interface ParsedIntent {
     query?: ParsedQueryData;
     reference?: EventReference;
     ambiguity?: AmbiguityInfo;
+    /** Whether clarification is needed before execution */
+    requiredClarification?: boolean;
+    /** Single clarification question to ask user */
+    clarificationQuestion?: string | null;
 }
 
 export interface ParsedEventData {
@@ -181,4 +185,34 @@ export interface CalendarPolicies {
     CONTEXT_TIMEOUT_MINUTES: number;
     CONFIDENCE_REJECT_THRESHOLD: number;
     CONFIDENCE_CLARIFY_THRESHOLD: number;
+}
+
+// ============================================================================
+// Rate Limiting Types
+// ============================================================================
+
+export interface RateLimitConfig {
+    maxCallsPerAction: number;
+    maxRetries: number;
+    maxClarifications: number;
+    burstLimitPerMinute: number;
+    initialBackoffMs: number;
+    backoffMultiplier: number;
+    maxBackoffMs: number;
+}
+
+// ============================================================================
+// Instrumentation Types
+// ============================================================================
+
+export interface InstrumentationMetrics {
+    totalActions: number;
+    totalLLMCalls: number;
+    totalRetries: number;
+    totalClarifications: number;
+    totalFailures: number;
+    avgLLMCallsPerAction: number;
+    avgDurationMs: number;
+    requestsInLastMinute: number;
+    requestsInLastHour: number;
 }

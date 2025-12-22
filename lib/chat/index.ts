@@ -10,6 +10,12 @@ export * from './types';
 // Policies
 export { POLICIES, isAcknowledgment, parseSelectionIndex, parseConfirmation } from './policies';
 
+// Rate Limiting
+export { RateLimiter, createRateLimiter, getRateLimiter, DEFAULT_RATE_LIMIT_CONFIG } from './rateLimiter';
+
+// Instrumentation
+export { ChatInstrumentation, createInstrumentation, getInstrumentation } from './instrumentation';
+
 // Core modules
 export { IntentParser, createIntentParser } from './intentParser';
 export { CommandValidator, createCommandValidator } from './commandValidator';
@@ -27,3 +33,4 @@ export function createEmptyContext(conversationId: string): import('./types').Co
         lastActivityAt: new Date().toISOString(),
     };
 }
+

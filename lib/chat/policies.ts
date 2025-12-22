@@ -24,17 +24,17 @@ export const POLICIES: CalendarPolicies = {
     /** Minimum event duration to prevent accidental 0-minute events */
     MIN_DURATION_MINUTES: 15,
 
-    /** Maximum clarification attempts before aborting */
-    MAX_CLARIFICATIONS: 2,
+    /** Maximum clarification attempts before aborting - reduced to 1 for less friction */
+    MAX_CLARIFICATIONS: 1,
 
     /** Minutes of inactivity before clearing pending clarification */
     CONTEXT_TIMEOUT_MINUTES: 5,
 
-    /** Confidence below this → reject immediately */
-    CONFIDENCE_REJECT_THRESHOLD: 0.5,
+    /** Confidence below this → reject immediately (lowered from 0.5) */
+    CONFIDENCE_REJECT_THRESHOLD: 0.3,
 
-    /** Confidence below this (but >= reject) → proceed with clarification for missing fields */
-    CONFIDENCE_CLARIFY_THRESHOLD: 0.7,
+    /** Confidence below this (but >= reject) → proceed with clarification for missing fields (lowered from 0.7) */
+    CONFIDENCE_CLARIFY_THRESHOLD: 0.5,
 } as const;
 
 // ============================================================================

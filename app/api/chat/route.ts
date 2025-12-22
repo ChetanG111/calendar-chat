@@ -83,15 +83,9 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// Clear old conversations periodically (basic cleanup)
-setInterval(() => {
-    const now = Date.now();
-    const maxAge = 30 * 60 * 1000; // 30 minutes
-
-    for (const [id, context] of conversationContexts.entries()) {
-        const lastActivity = new Date(context.lastActivityAt).getTime();
-        if (now - lastActivity > maxAge) {
-            conversationContexts.delete(id);
-        }
-    }
-}, 5 * 60 * 1000); // Run every 5 minutes
+/*
+NOTE: The in-memory cache and setInterval are for demonstration purposes only.
+In a production/serverless environment, this should be replaced with a persistent,
+distributed cache like Redis, Vercel KV, or a database with a TTL policy to
+manage conversation context and session cleanup effectively.
+*/

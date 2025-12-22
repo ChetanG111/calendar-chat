@@ -1,5 +1,3 @@
-<div align="center">
-
 # Nexus Calendar
 
 A conversational AI-powered calendar application built with Next.js 15, featuring natural language event management through an LLM-driven chat interface.

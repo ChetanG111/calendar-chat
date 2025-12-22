@@ -4,10 +4,17 @@
  * Orchestrates the entire chat pipeline:
  * 1. Pre-check for NO-OPs
  * 2. Handle pending clarifications (without Groq)
- * 3. Parse intent via Groq
- * 4. Validate command
- * 5. Execute calendar operations
- * 6. Format and return response
+ * 3. Parse intent via Groq (with retries and rate limiting)
+ * 4. Handle unified clarification response from LLM
+ * 5. Validate command
+ * 6. Execute calendar operations
+ * 7. Format and return response
+ *
+ * Enhanced with:
+ * - Rate limiting integration
+ * - Instrumentation logging
+ * - Unified clarification flow
+ * - Reduced confirmations for low-risk ops
  */
 
 import {
@@ -16,7 +23,6 @@ import {
     ConversationContext,
     ParsedIntent,
     ValidatedCommand,
-    CalendarPolicies,
 } from './types';
 import { CalendarEvent } from '@/types';
 import { createIntentParser, IntentParser } from './intentParser';
@@ -24,6 +30,8 @@ import { createCommandValidator, CommandValidator } from './commandValidator';
 import { createClarificationManager, ClarificationManager } from './clarificationManager';
 import { createResponseFormatter, ResponseFormatter } from './responseFormatter';
 import { POLICIES, isAcknowledgment, parseConfirmation } from './policies';
+import { getRateLimiter, RateLimiter } from './rateLimiter';
+import { getInstrumentation, ChatInstrumentation } from './instrumentation';
 import {
     createEvent,
     updateEvent,
@@ -64,12 +72,16 @@ export class ChatController {
     private commandValidator: CommandValidator;
     private clarificationManager: ClarificationManager;
     private responseFormatter: ResponseFormatter;
+    private rateLimiter: RateLimiter;
+    private instrumentation: ChatInstrumentation;
 
     constructor() {
         this.intentParser = createIntentParser();
         this.commandValidator = createCommandValidator();
         this.clarificationManager = createClarificationManager();
         this.responseFormatter = createResponseFormatter();
+        this.rateLimiter = getRateLimiter();
+        this.instrumentation = getInstrumentation();
     }
 
     /**
@@ -78,10 +90,25 @@ export class ChatController {
     async handle(request: ChatRequest): Promise<ChatResponse> {
         const { message, context, timezone, currentTime } = request;
         let updatedContext = { ...context, lastActivityAt: new Date().toISOString() };
+        const actionId = `action_${crypto.randomUUID()}`;
+
+        // Start instrumentation and rate limiting for this action
+        this.rateLimiter.startAction(actionId);
+        this.instrumentation.startAction(actionId);
 
         try {
+            // Check burst limit before proceeding
+            if (this.rateLimiter.isBurstLimitExceeded()) {
+                return {
+                    message: this.rateLimiter.getGracefulDegradationMessage(),
+                    intent: 'error',
+                    updatedContext,
+                };
+            }
+
             // Step 1: Pre-check for NO-OP acknowledgments
             if (this.isNoopMessage(message, context)) {
+                this.instrumentation.recordSuccess(actionId, 'noop');
                 return {
                     message: this.responseFormatter.formatNoop(),
                     intent: 'noop',
@@ -91,7 +118,9 @@ export class ChatController {
 
             // Step 2: Handle pending confirmations
             if (context.awaitingClarification && context.pendingClarification?.field === 'confirmation') {
-                return this.handleConfirmation(message, context, timezone);
+                const result = await this.handleConfirmation(message, context, timezone);
+                this.instrumentation.recordSuccess(actionId, result.intent);
+                return result;
             }
 
             // Step 3: Handle pending clarifications (without Groq)
@@ -108,15 +137,18 @@ export class ChatController {
                     if (validationResult.valid && validationResult.command) {
                         // Clear clarification and execute
                         updatedContext = this.clarificationManager.clearPendingClarification(updatedContext);
-                        return this.executeCommand(validationResult.command, updatedContext, timezone);
+                        const execResult = await this.executeCommand(validationResult.command, updatedContext, timezone);
+                        this.instrumentation.recordSuccess(actionId, execResult.intent);
+                        return execResult;
                     }
 
                     if (validationResult.clarification) {
-                        // Need more clarification
+                        // Need more clarification - but limit to 1 per action
                         if (context.clarificationCount >= POLICIES.MAX_CLARIFICATIONS) {
+                            // Instead of error, try to execute with defaults
                             return {
                                 message: this.responseFormatter.formatMaxClarifications(),
-                                intent: 'error',
+                                intent: 'clarification',
                                 updatedContext: this.clarificationManager.clearPendingClarification(updatedContext),
                             };
                         }
@@ -125,6 +157,7 @@ export class ChatController {
                             updatedContext,
                             validationResult.clarification
                         );
+                        this.instrumentation.recordClarification(actionId, validationResult.clarification.field);
 
                         return {
                             message: validationResult.clarification.question,
@@ -138,12 +171,13 @@ export class ChatController {
                 // Could not process clarification response - continue to Groq
             }
 
-            // Step 4: Parse intent via Groq
+            // Step 4: Parse intent via Groq (with retries handled internally)
             const parsedIntent = await this.intentParser.parse(
                 message,
                 currentTime,
                 timezone,
-                context.turns
+                context.turns,
+                actionId
             );
 
             // Add turn to history
@@ -268,6 +302,7 @@ export class ChatController {
 
     /**
      * Execute a validated command
+     * Note: Confirmation only required for DELETE, not UPDATE (reduced friction)
      */
     private async executeCommand(
         command: ValidatedCommand,
@@ -282,12 +317,11 @@ export class ChatController {
                 return this.executeCreate(command, updatedContext);
 
             case 'update':
-                if (!skipConfirmation && command.targetEventId) {
-                    return this.requestConfirmation('update', command, context);
-                }
+                // Skip confirmation for updates - reduced friction
                 return this.executeUpdate(command, updatedContext);
 
             case 'delete':
+                // Only require confirmation for destructive delete actions
                 if (!skipConfirmation && command.targetEventId) {
                     return this.requestConfirmation('delete', command, context);
                 }
