@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { CalendarCategory, getThemeForColor } from '@/types';
 import { motion, AnimatePresence, LayoutGroup, Variants } from 'framer-motion';
+import SettingsMenu from './SettingsMenu';
 
 interface SidebarProps {
   currentDate: Date;
@@ -161,12 +162,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <motion.aside
-      className="w-64 flex flex-col border-r border-border-dark bg-surface-dark overflow-y-auto flex-shrink-0"
+      className="w-64 flex flex-col border-r border-border-dark bg-surface-dark h-full flex-shrink-0 overflow-hidden"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
-      <div className="p-4">
+      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 p-4">
         {/* Days Header */}
         <motion.div variants={itemVariants} className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2 select-none">
           <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
@@ -432,6 +433,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
           </AnimatePresence>
         </div>
+      </div>
+      
+      <div className="px-4 py-3 border-t border-white/5 bg-surface-dark flex-shrink-0">
+        <SettingsMenu />
       </div>
     </motion.aside>
   );
