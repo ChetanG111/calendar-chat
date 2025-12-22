@@ -8,7 +8,16 @@
 export * from './types';
 
 // Policies
-export { POLICIES, isAcknowledgment, parseSelectionIndex, parseConfirmation } from './policies';
+export {
+    POLICIES,
+    isAcknowledgment,
+    parseSelectionIndex,
+    parseConfirmation,
+    matchesExpandedConfirmation,
+    matchesIntentShiftSignal,
+    matchesCorrectionPattern,
+    isTrivialInput,
+} from './policies';
 
 // Rate Limiting
 export { RateLimiter, createRateLimiter, getRateLimiter, DEFAULT_RATE_LIMIT_CONFIG } from './rateLimiter';
@@ -28,9 +37,12 @@ export function createEmptyContext(conversationId: string): import('./types').Co
     return {
         conversationId,
         turns: [],
+        phase: 'idle',
+        activeIntent: null,
+        interruptedIntents: [],
         awaitingClarification: false,
         clarificationCount: 0,
+        llmCallsThisAction: 0,
         lastActivityAt: new Date().toISOString(),
     };
 }
-

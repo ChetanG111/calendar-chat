@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ViewType, CalendarEvent } from '@/types';
 import { clsx } from "clsx";
+import { Send } from '@/components/animate-ui/icons/send';
 
 // ============================================================================
 // Types
@@ -156,7 +157,7 @@ function EventCard({ event, intent, compact, onNavigateToEvent }: {
     });
   };
 
-  const typeColors = {
+  const typeColors: Record<string, string> = {
     business: 'border-blue-500 bg-blue-500/10 hover:bg-blue-500/20',
     personal: 'border-red-500 bg-red-500/10 hover:bg-red-500/20',
     meetings: 'border-orange-500 bg-orange-500/10 hover:bg-orange-500/20',
@@ -446,7 +447,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               )}
             >
-              <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+              <Send size={18} animateOnHover />
             </button>
           </div>
         </div>

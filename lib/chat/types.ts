@@ -110,13 +110,76 @@ export interface EventCandidate {
     isRecurring: boolean;
 }
 
+// ============================================================================
+// Conversation State Types (Enhanced for UX Improvements)
+// ============================================================================
+
+/** Current phase of the conversation flow */
+export type ConversationPhase =
+    | 'idle'                    // No active intent
+    | 'collecting_info'         // Gathering missing fields
+    | 'awaiting_selection'      // User must pick from candidates
+    | 'awaiting_confirmation'   // Destructive action pending approval
+    | 'confirming_intent_shift' // User is switching intents mid-flow
+    | 'executing';              // Command validated, executing
+
+/** State of the currently active intent being processed */
+export interface ActiveIntentState {
+    /** The parsed intent (may be incomplete) */
+    intent: ParsedIntent;
+
+    /** Which field(s) are we waiting for */
+    awaitingFields: string[];
+
+    /** What question did we last ask */
+    lastQuestion: string;
+
+    /** How many clarification attempts for THIS intent */
+    clarificationAttempts: number;
+
+    /** Event candidates if awaiting selection */
+    candidates?: EventCandidate[];
+
+    /** For confirmation: the validated command ready to execute */
+    pendingCommand?: ValidatedCommand;
+
+    /** New intent detected during shift (for confirming_intent_shift phase) */
+    pendingNewIntent?: ParsedIntent;
+}
+
+/** An intent that was interrupted and can potentially be recovered */
+export interface InterruptedIntent {
+    intent: ParsedIntent;
+    interruptedAt: string;
+    reason: 'user_redirected' | 'ambiguous_input' | 'timeout';
+}
+
 export interface ConversationContext {
+    /** Unique conversation identifier */
     conversationId: string;
+
+    /** Rolling window of conversation turns (max 10) */
     turns: ConversationTurn[];
+
+    /** Current conversation phase */
+    phase: ConversationPhase;
+
+    /** Active intent being processed (null if idle) */
+    activeIntent: ActiveIntentState | null;
+
+    /** Stack of interrupted intents for potential recovery (max 2) */
+    interruptedIntents: InterruptedIntent[];
+
+    /** ISO 8601 timestamp of last activity */
+    lastActivityAt: string;
+
+    /** Number of LLM calls in current action (for budgeting) */
+    llmCallsThisAction: number;
+
+    // Legacy fields for backward compatibility
     awaitingClarification: boolean;
     pendingClarification?: PendingClarification;
     clarificationCount: number;
-    lastActivityAt: string;    // ISO 8601
 }
 
 export interface ConversationTurn {
@@ -130,6 +193,31 @@ export interface PendingClarification {
     partialIntent: ParsedIntent;
     candidates?: EventCandidate[];
     attemptCount: number;
+}
+
+// ============================================================================
+// Clarification Parse Result (for scoped LLM calls)
+// ============================================================================
+
+export type ClarificationParseType =
+    | 'answer'        // User answered the question
+    | 'intent_shift'  // User wants to do something else
+    | 'abort'         // User wants to cancel current flow
+    | 'correction'    // User is correcting a previous value
+    | 'unclear';      // Couldn't understand the response
+
+export interface ClarificationParseResult {
+    type: ClarificationParseType;
+    /** Which field this answers (if type === 'answer') */
+    answerField?: string;
+    /** The extracted value (if type === 'answer' or 'correction') */
+    answerValue?: string;
+    /** The new intent (if type === 'intent_shift') */
+    newIntent?: ParsedIntent;
+    /** Why it's unclear (if type === 'unclear') */
+    confusionReason?: string;
+    /** The corrected field (if type === 'correction') */
+    correctedField?: string;
 }
 
 // ============================================================================

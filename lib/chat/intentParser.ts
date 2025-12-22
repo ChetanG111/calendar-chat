@@ -10,7 +10,7 @@
  * - Unified response schema with required_clarification
  */
 
-import { ParsedIntent, ConversationTurn } from './types';
+import { ParsedIntent, ConversationTurn, ClarificationParseResult } from './types';
 import { getRateLimiter } from './rateLimiter';
 import { getInstrumentation } from './instrumentation';
 import { queryEventsInRange } from '@/lib/db';
@@ -342,6 +342,108 @@ export class IntentParser {
             requiredClarification: false,
         };
     }
+
+    /**
+     * Parse a clarification response via scoped LLM call
+     * This is a focused, smaller prompt specifically for understanding
+     * user responses during clarification flows.
+     */
+    async parseClarificationResponse(
+        message: string,
+        lastQuestion: string,
+        awaitingField: string,
+        candidates: Array<{ id: string; title: string }> | undefined,
+        timezone: string,
+        actionId?: string
+    ): Promise<ClarificationParseResult> {
+        const aid = actionId || generateUUID();
+
+        // Build a focused prompt for clarification parsing
+        const prompt = this.buildClarificationPrompt(message, lastQuestion, awaitingField, candidates);
+
+        try {
+            this.rateLimiter.recordLLMCall(aid);
+            const startTime = Date.now();
+
+            const response = await this.callGroq([
+                { role: 'system', content: prompt },
+                { role: 'user', content: message },
+            ], false);
+
+            const duration = Date.now() - startTime;
+            this.instrumentation.recordLLMCall(aid, duration);
+
+            return this.parseClarificationResult(response);
+        } catch (error) {
+            console.error('Clarification parsing error:', error);
+            return {
+                type: 'unclear',
+                confusionReason: 'Failed to parse response',
+            };
+        }
+    }
+
+    /**
+     * Build a focused prompt for clarification parsing
+     */
+    private buildClarificationPrompt(
+        userMessage: string,
+        lastQuestion: string,
+        awaitingField: string,
+        candidates?: Array<{ id: string; title: string }>
+    ): string {
+        const candidateList = candidates && candidates.length > 0
+            ? `\nAvailable options:\n${candidates.map((c, i) => `${i + 1}. "${c.title}" (id: ${c.id})`).join('\n')}`
+            : '';
+
+        return `You are parsing a user's response to a clarification question in a calendar assistant.
+
+CONTEXT:
+- We asked: "${lastQuestion}"
+- User replied: "${userMessage}"
+- We are waiting for: ${awaitingField}${candidateList}
+
+RESPOND IN JSON ONLY:
+{
+  "type": "answer" | "intent_shift" | "abort" | "correction" | "unclear",
+  "answerField": "${awaitingField}" | null,
+  "answerValue": "the extracted value" | null,
+  "selectedId": "candidate id if selecting from list" | null,
+  "confusionReason": "why unclear" | null
+}
+
+RULES:
+1. If user is answering the question, extract the value as "answer"
+2. If user says "actually...", "wait...", "cancel...", "never mind", it's "intent_shift" or "abort"
+3. If user says "no, [correct value]" or "not X, Y", it's a "correction"
+4. If referring to a candidate like "the one with [keyword]", match to a candidate and return "answer" with selectedId
+5. For time expressions, convert to natural description (e.g., "3pm tomorrow")
+6. If you can't understand, return "unclear" with a helpful confusionReason`;
+    }
+
+    /**
+     * Parse the LLM response for clarification
+     */
+    private parseClarificationResult(content: string): ClarificationParseResult {
+        try {
+            const parsed = JSON.parse(content);
+
+            const validTypes = ['answer', 'intent_shift', 'abort', 'correction', 'unclear'];
+            if (!parsed.type || !validTypes.includes(parsed.type)) {
+                return { type: 'unclear', confusionReason: 'Invalid response type' };
+            }
+
+            return {
+                type: parsed.type,
+                answerField: parsed.answerField || undefined,
+                answerValue: parsed.selectedId || parsed.answerValue || undefined,
+                confusionReason: parsed.confusionReason || undefined,
+                correctedField: parsed.type === 'correction' ? parsed.answerField : undefined,
+            };
+        } catch {
+            return { type: 'unclear', confusionReason: 'Failed to parse LLM response' };
+        }
+    }
 }
 
 /**
@@ -354,4 +456,3 @@ export function createIntentParser(): IntentParser {
     }
     return new IntentParser({ apiKey });
 }
-

@@ -91,10 +91,9 @@ const EventSummaryPopover: React.FC<EventSummaryPopoverProps> = ({ event, anchor
     >
       {/* Header */}
       <div className="flex-none flex items-center justify-between px-4 py-3 bg-transparent border-b border-white/10">
-        <motion.div variants={itemVariants} className="flex items-center gap-1 text-sm text-[#9aa0a6] hover:bg-white/5 px-2 py-1 rounded cursor-pointer transition-colors">
+        <motion.div variants={itemVariants} className="flex items-center gap-1 text-sm text-[#9aa0a6] px-2 py-1">
           <span className="material-symbols-outlined text-[18px]">event</span>
           <span>Event</span>
-          <span className="material-symbols-outlined text-[18px]">arrow_drop_down</span>
         </motion.div>
         <motion.div variants={itemVariants} className="flex items-center gap-1">
           <button onClick={onEdit} className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] hover:bg-white/10 rounded-full transition-colors" title="Edit event">

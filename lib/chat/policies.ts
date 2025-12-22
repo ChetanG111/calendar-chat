@@ -125,6 +125,132 @@ const CANCEL_PATTERNS = [
     /^don'?t$/i,
 ];
 
+// ============================================================================
+// Expanded Confirmation Patterns (UX Improvement)
+// ============================================================================
+
+const EXPANDED_CONFIRM_PATTERNS = [
+    // Standard affirmatives
+    /^(yes|yep|yeah|yup|y|yea|yess|sure)$/i,
+    // Action confirmations
+    /^(ok|okay|go ahead|do it|confirm|proceed|please|correct|right)$/i,
+    // Sounds good variants
+    /^(sounds? good|works? for me|perfect|great|fine)$/i,
+    // Affirmative acknowledgments
+    /^(uh ?huh|mhm|absolutely|definitely)$/i,
+    // "That's right" variants
+    /^(that'?s? (right|correct|it|the one))$/i,
+];
+
+const EXPANDED_CANCEL_PATTERNS = [
+    // Standard negatives
+    /^(no|nope|n|nah)$/i,
+    // Cancel/abort actions
+    /^(cancel|stop|don'?t|abort|quit)$/i,
+    // Never mind variants
+    /^(never ?mind|forget ?(it|that)?|wait|hold on)$/i,
+    // Wrong selection
+    /^(not (that|this) one)$/i,
+    /^(wrong (one|event))$/i,
+];
+
+// ============================================================================
+// Intent Shift Signals (Detect when user wants to change course)
+// ============================================================================
+
+const INTENT_SHIFT_SIGNALS = [
+    /^(actually|wait|hold on|stop),?\s/i,         // "Actually, I want to..."
+    /^(cancel|never ?mind|forget (it|that))/i,    // Abort signals
+    /^no,?\s+(I |i |let'?s |we )/i,               // "No, I want to..." = redirect
+    /^(instead|rather),?\s/i,                      // "Instead, let's..."
+    /^let'?s (do|try) something else/i,           // Fresh start request
+    /^(can we|let me|I want to) (start over|begin again)/i, // Restart request
+];
+
+// ============================================================================
+// Correction Patterns (Detect when user is fixing a detail)
+// ============================================================================
+
+const CORRECTION_PATTERNS = [
+    // "no, 4pm" or "no 4pm not 5"
+    { pattern: /^no,?\s+(.+)/i, valueGroup: 1 },
+    // "not 5, 4pm" or "actually 4pm"  
+    { pattern: /^(not|actually)\s+(.+)/i, valueGroup: 2 },
+    // "4pm, not 5pm"
+    { pattern: /^(.+?),?\s+not\s+.+$/i, valueGroup: 1 },
+    // "I meant 4pm"
+    { pattern: /^I meant\s+(.+)/i, valueGroup: 1 },
+    // "change it to 4pm"
+    { pattern: /^(change|make) it( to)?\s+(.+)/i, valueGroup: 3 },
+];
+
+/**
+ * Check if message matches intent shift signals
+ * @param message - User message
+ * @returns true if it signals an intent shift
+ */
+export function matchesIntentShiftSignal(message: string): boolean {
+    const normalized = message.trim();
+    return INTENT_SHIFT_SIGNALS.some(pattern => pattern.test(normalized));
+}
+
+/**
+ * Parse a confirmation response using expanded patterns
+ * @param message - User message  
+ * @returns true = confirmed, false = cancelled, null = unclear
+ */
+export function matchesExpandedConfirmation(message: string): boolean | null {
+    const normalized = message.trim();
+
+    for (const pattern of EXPANDED_CONFIRM_PATTERNS) {
+        if (pattern.test(normalized)) return true;
+    }
+
+    for (const pattern of EXPANDED_CANCEL_PATTERNS) {
+        if (pattern.test(normalized)) return false;
+    }
+
+    return null;
+}
+
+/**
+ * Check for and extract correction patterns
+ * @param message - User message
+ * @returns The corrected value or null if not a correction
+ */
+export function matchesCorrectionPattern(message: string): string | null {
+    const normalized = message.trim();
+
+    for (const { pattern, valueGroup } of CORRECTION_PATTERNS) {
+        const match = normalized.match(pattern);
+        if (match && match[valueGroup]) {
+            return match[valueGroup].trim();
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Check if input is "trivial" (likely just an answer attempt, not a new intent)
+ * @param message - User message
+ * @returns true if trivial (< 4 words and no verb-like patterns)
+ */
+export function isTrivialInput(message: string): boolean {
+    const words = message.trim().split(/\s+/);
+    if (words.length >= 5) return false;
+
+    // Check for command-like patterns that indicate a new intent
+    const commandPatterns = [
+        /^(create|add|schedule|book|make)/i,
+        /^(update|change|move|modify|edit|reschedule)/i,
+        /^(delete|remove|cancel)/i,
+        /^(show|list|what|when|find)/i,
+    ];
+
+    return !commandPatterns.some(p => p.test(message));
+}
+
 /**
  * Parse a confirmation response (deterministic, no AI)
  * @param message - User message

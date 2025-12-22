@@ -111,22 +111,27 @@ export class ResponseFormatter {
 
     /**
      * Format a confirmation request for destructive actions
+     * Enhanced with more natural phrasing
      */
     formatConfirmationRequest(
         action: 'delete' | 'update',
         event: CalendarEvent,
         instanceOnly: boolean = false
     ): string {
-        const dateStr = formatDate(event.start, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        const dateStr = formatDate(event.start, { weekday: 'long', month: 'long', day: 'numeric' });
+        const timeStr = formatTime(event.start);
 
         if (action === 'delete') {
-            if (instanceOnly) {
-                return `Cancel "${event.title}" on ${dateStr} only? This won't affect future occurrences.\nReply "yes" to confirm.`;
+            if (event.rrule && instanceOnly) {
+                return `Cancel "${event.title}" on ${dateStr} only? Future occurrences won't be affected. (yes/no)`;
             }
-            return `Delete "${event.title}"?\nReply "yes" to confirm.`;
+            if (event.rrule && !instanceOnly) {
+                return `This is a recurring event. Delete just this occurrence on ${dateStr}, or all future occurrences?\n1. This occurrence only\n2. All occurrences\n3. Cancel`;
+            }
+            return `Delete "${event.title}" at ${timeStr} on ${dateStr}? (yes/no)`;
         }
 
-        return `Update "${event.title}"?\nReply "yes" to confirm.`;
+        return `Update "${event.title}"? (yes/no)`;
     }
 
     /**
@@ -147,7 +152,21 @@ export class ResponseFormatter {
      * Format max clarifications exceeded
      */
     formatMaxClarifications(): string {
-        return "I'm having trouble understanding. Let's start fresh - what would you like to do?";
+        return "I'm having trouble understanding. Let's start fresh — what would you like to do?";
+    }
+
+    /**
+     * Format intent shift confirmation
+     */
+    formatIntentShiftConfirmation(currentTask: string): string {
+        return `Should I cancel ${currentTask} and do something else? (yes/no)`;
+    }
+
+    /**
+     * Format a correction acknowledgment
+     */
+    formatCorrectionAcknowledged(field: string, newValue: string): string {
+        return `Got it, changed ${field} to ${newValue}.`;
     }
 
     /**
