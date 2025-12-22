@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { getThemeForColor } from '@/types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -23,6 +23,31 @@ const defaultTheme: CalendarTheme = {
   dot: 'bg-blue-500',
   hover: 'hover:bg-blue-500/30',
   solidBg: 'bg-blue-500'
+};
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.02,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.8, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 20
+    }
+  }
 };
 
 const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, onDateChange, onEventClick, onNewEvent, selectedEventId }) => {
@@ -51,18 +76,23 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
   }
 
   return (
-    <div className="flex flex-col flex-grow h-full bg-background-dark">
+    <motion.div 
+      className="flex flex-col flex-grow h-full bg-background-dark"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Weekday Header */}
-      <div className="grid grid-cols-7 border-b border-border-dark bg-surface-dark">
+      <motion.div variants={containerVariants} className="grid grid-cols-7 border-b border-border-dark bg-surface-dark">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center py-3 text-sm font-semibold text-gray-400 border-r border-transparent">
+          <motion.div variants={itemVariants} key={day} className="text-center py-3 text-sm font-semibold text-gray-400 border-r border-transparent">
             {day}
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Grid */}
-      <div ref={containerRef} className="grid grid-cols-7 flex-grow border-l border-border-dark">
+      <motion.div variants={containerVariants} ref={containerRef} className="grid grid-cols-7 flex-grow border-l border-border-dark">
         {grid.map((cell, idx) => {
           const isToday = new Date().toDateString() === cell.date.toDateString();
           const cellEnd = new Date(cell.date);
@@ -70,7 +100,8 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
           const dayEvents = events.filter(e => e.start < cellEnd && e.end > cell.date);
 
           return (
-            <div
+            <motion.div
+              variants={itemVariants}
               key={idx}
               onDoubleClick={() => {
                 // Clicking a cell now triggers new event instead of navigation
@@ -124,11 +155,11 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
-    </div >
+      </motion.div>
+    </motion.div>
   );
 };
 

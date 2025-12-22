@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { arrangeEvents } from '@/lib/utils';
 import { getThemeForColor } from '@/types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface DayViewProps {
   currentDate: Date;
@@ -23,6 +23,31 @@ const defaultTheme: CalendarTheme = {
   dot: 'bg-blue-500',
   hover: 'hover:bg-blue-500/30',
   solidBg: 'bg-blue-500'
+};
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.02,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.8, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 20
+    }
+  }
 };
 
 const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEventClick, onNewEvent, selectedEventId }) => {
@@ -103,9 +128,14 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col h-full bg-background-dark overflow-hidden">
+    <motion.div 
+      className="flex flex-1 flex-col h-full bg-background-dark overflow-hidden"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Day Header */}
-      <div className="flex-none px-6 py-4 border-b border-border-dark bg-surface-dark">
+      <motion.div variants={itemVariants} className="flex-none px-6 py-4 border-b border-border-dark bg-surface-dark">
         <div className="flex flex-col">
           <span className="text-xs uppercase tracking-wide font-semibold text-gray-400">
             {currentDate.toLocaleDateString('en-US', { weekday: 'long' })}
@@ -114,10 +144,10 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
             {currentDate.getDate()}
           </span>
         </div>
-      </div>
+      </motion.div>
 
       {/* All Day Section */}
-      <div className="flex-none border-b border-border-dark bg-surface-dark min-h-[50px]">
+      <motion.div variants={itemVariants} className="flex-none border-b border-border-dark bg-surface-dark min-h-[50px]">
         <div className="flex h-full">
           <div className="w-16 flex-shrink-0 border-r border-border-dark flex items-center justify-center text-xs text-gray-500 bg-surface-dark">
             All-day
@@ -157,7 +187,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
             </AnimatePresence>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Scrollable Timeline */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark scroll-smooth no-scrollbar">
@@ -166,7 +196,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
             {/* Time Column */}
             <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark text-right text-xs text-gray-500 font-medium z-10 h-full">
               {hours.map(hour => (
-                <div key={hour} className="h-[60px] pr-2 pt-2 border-b border-zinc-800/50 relative">
+                <motion.div variants={itemVariants} key={hour} className="h-[60px] pr-2 pt-2 border-b border-zinc-800/50 relative">
                   <span className="relative block text-right">
                     {hour === 0 ? '' : (() => {
                       const isPM = hour >= 12;
@@ -174,7 +204,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
                       return `${h} ${isPM ? 'PM' : 'AM'}`;
                     })()}
                   </span>
-                </div>
+                </motion.div>
               ))}
             </div>
 
@@ -187,7 +217,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
               }}
             >
               {hours.map(hour => (
-                <div key={`grid - ${hour} `} className="h-[60px] border-b border-zinc-800/50 w-full"></div>
+                <motion.div variants={itemVariants} key={`grid - ${hour} `} className="h-[60px] border-b border-zinc-800/50 w-full"></motion.div>
               ))}
 
               {currentTimePosition !== null && (
@@ -247,7 +277,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

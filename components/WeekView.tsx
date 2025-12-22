@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { arrangeEvents } from '@/lib/utils';
 import { getThemeForColor } from '@/types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface WeekViewProps {
   currentDate: Date;
@@ -24,6 +24,31 @@ const defaultTheme: CalendarTheme = {
   dot: 'bg-blue-500',
   hover: 'hover:bg-blue-500/30',
   solidBg: 'bg-blue-500'
+};
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.02,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.8, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 20
+    }
+  }
 };
 
 const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onDateChange, onNewEvent, onEventClick, selectedEventId }) => {
@@ -80,9 +105,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col min-w-0 bg-background-dark relative h-full">
+    <motion.div 
+      className="flex flex-1 flex-col min-w-0 bg-background-dark relative h-full"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Week Header */}
-      <div className="flex-none flex border-b border-border-dark bg-surface-dark">
+      <motion.div variants={itemVariants} className="flex-none flex border-b border-border-dark bg-surface-dark">
         <div className="w-16 flex-shrink-0 border-r border-border-dark">
           <div className="h-16 flex items-end justify-center pb-2 text-xs text-gray-500">
             GMT-05
@@ -115,10 +145,10 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
             <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* All Day Section */}
-      <div className="flex-none flex border-b border-border-dark bg-surface-dark min-h-[40px]">
+      <motion.div variants={itemVariants} className="flex-none flex border-b border-border-dark bg-surface-dark min-h-[40px]">
         <div className="w-16 flex-shrink-0 border-r border-border-dark flex items-center justify-center text-xs text-gray-500 p-2">
           All-day
         </div>
@@ -174,7 +204,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
             <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark pointer-events-none" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Grid */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark no-scrollbar">
@@ -182,9 +212,9 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
           {/* Time Labels */}
           <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark z-10 text-right pr-2 pt-2 select-none sticky left-0">
             {hours.map(h => (
-              <div key={h} className="h-[60px] text-xs text-gray-500 relative -top-3">
+              <motion.div variants={itemVariants} key={h} className="h-[60px] text-xs text-gray-500 relative -top-3">
                 {h === 0 ? '' : (h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`)}
-              </div>
+              </motion.div>
             ))}
           </div>
 
@@ -193,7 +223,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
             {/* Horizontal Lines - full width across all columns */}
             <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
               {hours.map(h => (
-                <div key={h} className="h-[60px] border-b border-zinc-800/50 w-full"></div>
+                <motion.div variants={itemVariants} key={h} className="h-[60px] border-b border-zinc-800/50 w-full"></motion.div>
               ))}
             </div>
 
@@ -283,7 +313,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
