@@ -153,7 +153,6 @@ interface ChatMessage {
   intent?: string;
   event?: CalendarEvent;
   events?: CalendarEvent[];
-  isLoading?: boolean;
 }
 
 interface ChatViewProps {
@@ -166,36 +165,7 @@ interface ChatViewProps {
   calendars?: import('@/types').CalendarCategory[];
 }
 
-// ============================================================================
-// Chat API Client
-// ============================================================================
 
-async function sendChatMessage(message: string, conversationId: string): Promise<{
-  message: string;
-  intent: string;
-  intentId?: string;
-  event?: CalendarEvent;
-  events?: CalendarEvent[];
-  conversationId: string;
-}> {
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message,
-      conversationId,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      currentTime: new Date().toISOString(),
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to send message');
-  }
-
-  return response.json();
-}
 
 // ============================================================================
 // Message Components
@@ -252,91 +222,71 @@ function AssistantMessage({
         variants={avatarVariants}
         className="mt-1 w-8 h-8 rounded-full bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0"
       >
-        {message.isLoading ? (
-          <span className="material-symbols-outlined text-gray-400 text-sm animate-spin">progress_activity</span>
-        ) : (
-          <span className="material-symbols-outlined text-gray-400 text-sm">smart_toy</span>
-        )}
+        <span className="material-symbols-outlined text-gray-400 text-sm">smart_toy</span>
       </motion.div>
 
       <motion.div
         variants={bubbleContentVariants}
         className="space-y-3 w-full max-w-[85%]"
       >
-        {message.isLoading ? (
+        <>
           <motion.div
-            className="flex items-center gap-2 text-gray-400"
-            animate={{
-              opacity: [0.5, 1, 0.5],
-            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeInOut",
+              type: "spring",
+              stiffness: 400,
+              damping: 25,
             }}
+            className={clsx(
+              "text-gray-200 whitespace-pre-wrap",
+              isSuccess && "text-green-300",
+              isError && "text-red-300"
+            )}
           >
-            <span className="text-sm">Thinking...</span>
+            {message.content}
           </motion.div>
-        ) : (
-          <>
+
+          {/* Show event card if one was created/updated */}
+          {message.event && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 400,
-                damping: 25,
-              }}
-              className={clsx(
-                "text-gray-200 whitespace-pre-wrap",
-                isSuccess && "text-green-300",
-                isError && "text-red-300"
-              )}
+              variants={eventCardVariants}
+              initial="initial"
+              animate="animate"
+              className="mt-2"
             >
-              {message.content}
+              <EventCard
+                event={message.event}
+                intent={message.intent}
+                onNavigateToEvent={onNavigateToEvent}
+                calendars={calendars}
+              />
             </motion.div>
+          )}
 
-            {/* Show event card if one was created/updated */}
-            {message.event && (
-              <motion.div
-                variants={eventCardVariants}
-                initial="initial"
-                animate="animate"
-                className="mt-2"
-              >
-                <EventCard
-                  event={message.event}
-                  intent={message.intent}
-                  onNavigateToEvent={onNavigateToEvent}
-                  calendars={calendars}
-                />
-              </motion.div>
-            )}
-
-            {/* Show list of events if query result */}
-            {message.events && message.events.length > 0 && message.intent === 'queried' && (
-              <div className="space-y-2 mt-2">
-                {message.events.map((event, index) => (
-                  <motion.div
-                    key={event.id || `event-${index}`}
-                    variants={eventCardVariants}
-                    initial="initial"
-                    animate="animate"
-                    transition={{ delay: index * 0.05 }}
-                    className="mt-1"
-                  >
-                    <EventCard
-                      event={event}
-                      compact
-                      onNavigateToEvent={onNavigateToEvent}
-                      calendars={calendars}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+          {/* Show list of events if query result */}
+          {message.events && message.events.length > 0 && message.intent === 'queried' && (
+            <div className="space-y-2 mt-2">
+              {message.events.map((event, index) => (
+                <motion.div
+                  key={event.id || `event-${index}`}
+                  variants={eventCardVariants}
+                  initial="initial"
+                  animate="animate"
+                  transition={{ delay: index * 0.05 }}
+                  className="mt-1"
+                >
+                  <EventCard
+                    event={event}
+                    compact
+                    onNavigateToEvent={onNavigateToEvent}
+                    calendars={calendars}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </>
       </motion.div>
     </motion.div>
   );
@@ -433,22 +383,9 @@ const ChatView: React.FC<ChatViewProps> = ({
   onEventDeleted,
   calendars = [],
 }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [conversationId, setConversationId] = useState('');
-  
-    useEffect(() => {
-      const storedId = sessionStorage.getItem('conversationId');
-      if (storedId) {
-        setConversationId(storedId);
-      } else {
-        const newId = `conv_${crypto.randomUUID()}`;
-        sessionStorage.setItem('conversationId', newId);
-        setConversationId(newId);
-      }
-    }, []);
   
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -469,7 +406,8 @@ const ChatView: React.FC<ChatViewProps> = ({
     // Send message
     const handleSend = useCallback(async () => {
       const trimmed = inputValue.trim();
-      if (!trimmed || isLoading || !conversationId) return;
+      if (!trimmed) return;
+
     // Add user message
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -480,66 +418,12 @@ const ChatView: React.FC<ChatViewProps> = ({
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
-    setIsLoading(true);
 
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-
-    // Add loading placeholder
-    const loadingId = crypto.randomUUID();
-    setMessages(prev => [...prev, {
-      id: loadingId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-      isLoading: true,
-    }]);
-
-    try {
-      const response = await sendChatMessage(trimmed, conversationId);
-
-      // Replace loading with actual response
-      setMessages(prev => prev.map(msg =>
-        msg.id === loadingId
-          ? {
-            id: loadingId,
-            role: 'assistant' as const,
-            content: response.message,
-            timestamp: new Date(),
-            intent: response.intent,
-            event: response.event,
-            events: response.events,
-          }
-          : msg
-      ));
-
-      // Trigger callbacks based on intent
-      if (response.intent === 'created' && response.event && onEventCreated) {
-        onEventCreated(response.event);
-      } else if (response.intent === 'updated' && response.event && onEventUpdated) {
-        onEventUpdated(response.event);
-      } else if (response.intent === 'deleted' && response.event && onEventDeleted) {
-        onEventDeleted(response.event);
-      }
-
-    } catch (error) {
-      // Replace loading with error
-      setMessages(prev => prev.map(msg =>
-        msg.id === loadingId
-          ? {
-            id: loadingId,
-            role: 'assistant' as const,
-            content: `❌ ${error instanceof Error ? error.message : 'Something went wrong'}`,
-            timestamp: new Date(),
-          }
-          : msg
-      ));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [inputValue, isLoading, conversationId, onEventCreated, onEventUpdated, onEventDeleted]);
+  }, [inputValue]);
 
   // Handle Enter key
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -726,17 +610,16 @@ const ChatView: React.FC<ChatViewProps> = ({
             placeholder="Ask AI anything..."
             rows={1}
             style={{ minHeight: '44px', maxHeight: '120px' }}
-            disabled={isLoading}
           />
 
           {/* Send Button */}
           <div className="flex items-center gap-2 mr-1 flex-shrink-0">
             <button
               onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading}
+              disabled={!inputValue.trim()}
               className={clsx(
                 "w-8 h-8 flex items-center justify-center rounded-full transition-colors",
-                inputValue.trim() && !isLoading
+                inputValue.trim()
                   ? "bg-primary text-white hover:brightness-110"
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               )}

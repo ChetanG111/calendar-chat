@@ -18,8 +18,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState('');
-    const [startTime, setStartTime] = useState('10:00');
-    const [endTime, setEndTime] = useState('10:45');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
     const [startDate, setStartDate] = useState<string>(''); // YYYY-MM-DD
     const [endDate, setEndDate] = useState<string>('');     // YYYY-MM-DD
     // Default to first calendar or personal or whatever is available
@@ -89,6 +89,15 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
                 // Initial data or defaults
                 const data = initialData || {};
                 const baseDate = defaultDate || new Date();
+                
+                // For current time default
+                const now = new Date();
+                const defaultStart = new Date(now);
+                
+                const defaultEnd = new Date(defaultStart);
+                defaultEnd.setHours(defaultStart.getHours() + 1);
+
+                const formatTime = (date: Date) => date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
                 setTitle(data.title || '');
                 setDescription(data.description || '');
@@ -98,18 +107,18 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, on
 
                 // If initialData has start/end, use them
                 if (data.start) {
-                    setStartTime(data.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+                    setStartTime(formatTime(data.start));
                     setStartDate(data.startDate || data.start.toISOString().split('T')[0]);
                 } else {
-                    setStartTime('10:00');
+                    setStartTime(formatTime(defaultStart));
                     setStartDate(baseDate.toISOString().split('T')[0]);
                 }
 
                 if (data.end) {
-                    setEndTime(data.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+                    setEndTime(formatTime(data.end));
                     setEndDate(data.endDate || data.end.toISOString().split('T')[0]);
                 } else {
-                    setEndTime('10:45');
+                    setEndTime(formatTime(defaultEnd));
                     setEndDate(baseDate.toISOString().split('T')[0]);
                 }
 
