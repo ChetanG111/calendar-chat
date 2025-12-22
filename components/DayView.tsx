@@ -76,6 +76,20 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
     return () => clearInterval(interval);
   }, [currentDate]);
 
+  // Scroll to current time on mount
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      // Scroll so current time is roughly in the middle, or at least visible
+      // 1440px is total height, viewport is likely smaller. 
+      // Let's scroll to current time - 200px (approx 3-4 hours padding)
+      scrollContainerRef.current.scrollTop = Math.max(0, minutes - 200);
+    }
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col h-full bg-background-dark overflow-hidden">
       {/* Day Header */}
@@ -127,15 +141,19 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
       </div>
 
       {/* Scrollable Timeline */}
-      <div className="flex-1 overflow-y-auto relative bg-background-dark scroll-smooth custom-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark scroll-smooth custom-scrollbar">
         <div className="relative w-full h-[1440px]">
           <div className="flex h-full">
             {/* Time Column */}
             <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark text-right text-xs text-gray-500 font-medium z-10 h-full">
               {hours.map(hour => (
                 <div key={hour} className="h-[60px] pr-2 pt-2 border-b border-zinc-800/50 relative">
-                  <span className="-top-3 relative">
-                    {hour === 0 ? '' : `${hour.toString().padStart(2, '0')}:00`}
+                  <span className="relative block text-right">
+                    {hour === 0 ? '' : (() => {
+                      const isPM = hour >= 12;
+                      const h = hour % 12 || 12;
+                      return `${h} ${isPM ? 'PM' : 'AM'}`;
+                    })()}
                   </span>
                 </div>
               ))}

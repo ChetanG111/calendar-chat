@@ -21,7 +21,7 @@ import {
 
 export default function Home() {
     const [currentView, setCurrentView] = useState<ViewType>('week');
-    const [currentDate, setCurrentDate] = useState(new Date(2025, 11, 16)); // Dec 16 2025 as per screenshot
+    const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [calendars, setCalendars] = useState<CalendarCategory[]>(DEFAULT_CALENDARS);
     const [isLoading, setIsLoading] = useState(true);

@@ -63,6 +63,21 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
       d.getFullYear() === today.getFullYear();
   };
 
+  // Scroll to current time on mount
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Only scroll if we are looking at the current week
+    // But user request says "whenever the calendar loads", so probably good to just scroll to "now" position regardless of date, 
+    // though it makes most sense if today is visible.
+    // The prompt implies: "shifts the view to today and the current time".
+    if (scrollContainerRef.current) {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      scrollContainerRef.current.scrollTop = Math.max(0, minutes - 200);
+    }
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col min-w-0 bg-background-dark relative h-full">
       {/* Week Header */}
@@ -154,7 +169,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
       </div>
 
       {/* Main Grid */}
-      <div className="flex-1 overflow-y-auto relative bg-background-dark custom-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark custom-scrollbar">
         <div className="flex h-[1440px] relative">
           {/* Time Labels */}
           <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark z-10 text-right pr-2 pt-2 select-none sticky left-0">
