@@ -20,9 +20,14 @@ interface RouteParams {
 }
 
 /**
- * GET /api/events/[id]
- * 
- * Get a single event by ID
+ * Retrieve a single event by ID and return it in the frontend-friendly shape.
+ *
+ * @param _ - The incoming NextRequest (unused).
+ * @param params - Route parameters; `params.id` resolves to the event ID to fetch.
+ * @returns A JSON response:
+ * - Success: `{ event: { id, eventId, title, start, end, type, description, location, guests, meetLink, isAllDay, isRecurring, rrule, timezone } }`
+ * - Not found: `{ error: 'Event not found' }` with HTTP 404
+ * - Failure: `{ error: 'Failed to fetch event' }` with HTTP 500
  */
 export async function GET(_: NextRequest, { params }: RouteParams) {
     try {
@@ -43,8 +48,8 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
             title: event.title,
             start: event.startAt.toISOString(),
             end: event.endAt.toISOString(),
-            type: event.metadata?.type || 'personal',
-            description: event.description,
+            type: event.metadata?.type || 'default',
+            description: event.description || undefined,
             location: event.metadata?.location,
             guests: event.metadata?.guests,
             meetLink: event.metadata?.meetLink,
@@ -65,9 +70,14 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
 }
 
 /**
- * PUT /api/events/[id]
- * 
- * Update an existing event
+ * Update an existing event identified by the route `id`.
+ *
+ * Accepts a JSON body with optional fields to update; metadata fields (`type`, `location`, `guests`, `meetLink`)
+ * are merged with existing metadata when present. `start` and `end` ISO strings are interpreted as dates.
+ *
+ * @param request - The incoming request whose JSON body may include any of: `title`, `description`, `start`, `end`, `timezone`, `isAllDay`, `rrule`, `type` ('business' | 'personal' | 'meetings' | 'holiday' | 'default'), `location`, `guests`, `meetLink`.
+ * @param params - Route parameters containing a promise-resolved `id` for the event.
+ * @returns On success, a JSON object `{ event }` where `event` is the updated event in frontend format with fields: `id`, `eventId`, `title`, `start`, `end`, `type` (defaults to `'default'` when absent), `description` (present or `undefined`), `location`, `guests`, `meetLink`, `isAllDay`, `isRecurring`, `rrule`, and `timezone`. Responds with status 404 when the event is not found and 500 on internal failure.
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
@@ -80,7 +90,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             timezone?: string;
             isAllDay?: boolean;
             rrule?: string;
-            type?: 'business' | 'personal' | 'meetings' | 'holiday';
+            type?: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
             location?: string;
             guests?: string[];
             meetLink?: string;
@@ -142,8 +152,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             title: event.title,
             start: event.startAt.toISOString(),
             end: event.endAt.toISOString(),
-            type: event.metadata?.type || 'personal',
-            description: event.description,
+            type: event.metadata?.type || 'default',
+            description: event.description || undefined,
             location: event.metadata?.location,
             guests: event.metadata?.guests,
             meetLink: event.metadata?.meetLink,

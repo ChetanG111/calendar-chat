@@ -17,6 +17,21 @@ import type {
     EventMetadata,
 } from './types';
 
+// Simple in-memory cache for expanded instances
+// Key: "startMs-endMs-expandRecurrence"
+// Value: Array of expanded instances
+const queryCache = new Map<string, ExpandedEventInstance[]>();
+
+/**
+ * Invalidate and clear the in-memory cache of expanded event instances.
+ *
+ * Call after any database write (create, update, delete) so subsequent range queries return fresh data.
+ */
+function invalidateCache() {
+    queryCache.clear();
+    console.log('[Events] Cache invalidated');
+}
+
 /**
  * Generate a unique event ID
  */
@@ -25,14 +40,39 @@ function generateEventId(): string {
 }
 
 /**
- * Convert a Date to UTC ISO 8601 string
+ * Converts a Date to a UTC ISO 8601 string.
+ *
+ * @returns The date formatted as an ISO 8601 string in UTC (ending with `Z`).
  */
 function toUtcString(date: Date): string {
     return date.toISOString();
 }
 
 /**
- * Convert a DbEvent row to a StoredEvent
+ * Formats a Date to a YYYY-MM-DD string for a given IANA timezone.
+ *
+ * If the provided timezone is invalid, the function logs a warning and falls back to UTC.
+ *
+ * @param date - The Date to format.
+ * @param timezone - The IANA timezone name to use (e.g., "America/New_York"); falls back to "UTC" when invalid.
+ * @returns The date formatted as `YYYY-MM-DD` in the specified timezone.
+ */
+function toTimezoneDateString(date: Date, timezone: string): string {
+    try {
+        return date.toLocaleDateString('en-CA', { timeZone: timezone });
+    } catch (e) {
+        console.warn(`[Events] Invalid timezone '${timezone}', falling back to UTC`);
+        return date.toLocaleDateString('en-CA', { timeZone: 'UTC' });
+    }
+}
+
+/**
+ * Map a database event row into a StoredEvent object.
+ *
+ * Parses JSON-encoded `exdates` and `metadata` when present (parsing failures log a warning and result in an empty array or object). Uses the stored `timezone` or `'UTC'` if missing, derives `startDate` and `endDate` using that timezone, converts timestamp fields to Date objects, and maps `is_all_day` (`1` means `true`) to `isAllDay`.
+ *
+ * @param row - The database row representing an event
+ * @returns A StoredEvent with parsed `exdates` and `metadata`, `startAt`/`endAt`/`createdAt`/`updatedAt` as Date objects, `startDate`/`endDate` formatted for the event timezone, and `isAllDay` normalized
  */
 function dbEventToStoredEvent(row: DbEvent): StoredEvent {
     let exdates: string[] = [];
@@ -53,13 +93,20 @@ function dbEventToStoredEvent(row: DbEvent): StoredEvent {
         }
     }
 
+    const startAt = new Date(row.start_at);
+    const endAt = new Date(row.end_at);
+    // Use the stored timezone, or default to UTC if missing/invalid
+    const timezone = row.timezone || 'UTC';
+
     return {
         id: row.id,
         title: row.title,
         description: row.description,
-        startAt: new Date(row.start_at),
-        endAt: new Date(row.end_at),
-        timezone: row.timezone,
+        startAt,
+        endAt,
+        startDate: toTimezoneDateString(startAt, timezone),
+        endDate: toTimezoneDateString(endAt, timezone),
+        timezone,
         isAllDay: row.is_all_day === 1,
         rrule: row.rrule,
         exdates,
@@ -70,10 +117,14 @@ function dbEventToStoredEvent(row: DbEvent): StoredEvent {
 }
 
 /**
- * Create a new event
- * 
- * @param input - Event creation input
- * @returns The created event
+ * Creates a new event in the database and returns the persisted record.
+ *
+ * This will generate an `id` if one is not provided, set creation and update
+ * timestamps to the current UTC time, serialize `exdates` and `metadata` to JSON
+ * when present, and invalidate the in-memory expanded-events query cache.
+ *
+ * @param input - Event creation input; if `input.id` is omitted a new id is generated.
+ * @returns The newly created StoredEvent including generated `id`, `startDate`/`endDate` derived for the event timezone, and timestamps.
  */
 export function createEvent(input: CreateEventInput): StoredEvent {
     const db = getDatabase();
@@ -106,6 +157,7 @@ export function createEvent(input: CreateEventInput): StoredEvent {
         updated_at: now,
     });
 
+    invalidateCache();
     console.log(`[Events] Created event: ${id} - "${input.title}"`);
 
     // Fetch and return the created event
@@ -168,6 +220,8 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
         updates.push('end_at = @end_at');
         params.end_at = toUtcString(input.endAt);
     }
+    // Note: startDate and endDate inputs are ignored as they are derived from startAt/endAt + timezone
+    
     if (input.timezone !== undefined) {
         updates.push('timezone = @timezone');
         params.timezone = input.timezone;
@@ -202,6 +256,7 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
     const stmt = db.prepare(sql);
     stmt.run(params);
 
+    invalidateCache();
     console.log(`[Events] Updated event: ${id}`);
 
     return getEventById(id);
@@ -220,6 +275,7 @@ export function deleteEvent(id: string): boolean {
     const result = stmt.run(id);
 
     if (result.changes > 0) {
+        invalidateCache();
         console.log(`[Events] Deleted event: ${id}`);
         return true;
     }
@@ -229,18 +285,23 @@ export function deleteEvent(id: string): boolean {
 }
 
 /**
- * Query events within a time range
- * 
- * This function:
- * 1. Fetches all events that might overlap the range (including recurring)
- * 2. Expands recurring events into instances
- * 3. Returns all matching instances sorted by start time
- * 
- * @param options - Query options including range and expansion settings
- * @returns Array of expanded event instances
+ * Retrieve event instances overlapping a time range, optionally expanding recurring events into individual instances.
+ *
+ * @param options - Query options containing:
+ *   - rangeStart: start of the query range (inclusive)
+ *   - rangeEnd: end of the query range (exclusive)
+ *   - expandRecurrence: when true (default), expand recurring events into their matching instances; when false, return raw event records with an `isRecurring` flag
+ * @returns An array of ExpandedEventInstance objects representing all matching instances within the specified range, sorted by instance start time
  */
 export function queryEventsInRange(options: EventQueryOptions): ExpandedEventInstance[] {
     const { rangeStart, rangeEnd, expandRecurrence = true } = options;
+
+    const cacheKey = `${rangeStart.getTime()}-${rangeEnd.getTime()}-${expandRecurrence}`;
+    if (queryCache.has(cacheKey)) {
+        console.log('[Events] Returning cached instances');
+        return queryCache.get(cacheKey)!;
+    }
+
     const db = getDatabase();
 
     const rangeStartStr = toUtcString(rangeStart);
@@ -282,6 +343,8 @@ export function queryEventsInRange(options: EventQueryOptions): ExpandedEventIns
                 description: event.description,
                 startAt: event.startAt,
                 endAt: event.endAt,
+                startDate: event.startDate,
+                endDate: event.endDate,
                 timezone: event.timezone,
                 isAllDay: event.isAllDay,
                 isRecurring: !!event.rrule,
@@ -296,6 +359,7 @@ export function queryEventsInRange(options: EventQueryOptions): ExpandedEventIns
 
     console.log(`[Events] Query returned ${instances.length} instances for range ${rangeStartStr} to ${rangeEndStr}`);
 
+    queryCache.set(cacheKey, instances);
     return instances;
 }
 

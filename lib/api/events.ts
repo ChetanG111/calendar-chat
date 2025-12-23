@@ -18,6 +18,8 @@ interface ApiEvent {
     title: string;
     start: string;
     end: string;
+    startDate?: string;
+    endDate?: string;
     type: 'business' | 'personal' | 'meetings' | 'holiday';
     description?: string;
     location?: string;
@@ -30,16 +32,22 @@ interface ApiEvent {
 }
 
 /**
- * Convert API event to frontend CalendarEvent
+ * Map a server-side ApiEvent into a frontend CalendarEvent ready for UI use.
+ *
+ * @param apiEvent - Event object from the API
+ * @returns A CalendarEvent with `start` and `end` converted to Date objects; optional fields (`startDate`, `endDate`, `description`) are `undefined` when not present on the API event
  */
 function toCalendarEvent(apiEvent: ApiEvent): CalendarEvent {
     return {
         id: apiEvent.id,
+        eventId: apiEvent.eventId,
         title: apiEvent.title,
         start: new Date(apiEvent.start),
         end: new Date(apiEvent.end),
+        startDate: apiEvent.startDate || undefined,
+        endDate: apiEvent.endDate || undefined,
         type: apiEvent.type,
-        description: apiEvent.description,
+        description: apiEvent.description || undefined,
         location: apiEvent.location,
         guests: apiEvent.guests,
         meetLink: apiEvent.meetLink,

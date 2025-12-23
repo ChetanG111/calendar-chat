@@ -54,15 +54,36 @@ export function getDatabase(): Database.Database {
 }
 
 /**
- * Initialize the database schema
- * 
- * Runs all schema statements. These are idempotent (use IF NOT EXISTS).
+ * Ensures the database schema is present and applies lightweight, idempotent auto-migrations.
+ *
+ * Executes the module's schema statements and attempts to add `start_date` and `end_date`
+ * columns to the `events` table if they are missing; existing schema elements are left unchanged.
+ *
+ * @param database - An open Better-SQLite3 database connection to apply schema changes to
  */
 function initializeSchema(database: Database.Database): void {
     console.log('[DB] Initializing schema...');
 
     for (const statement of SCHEMA_STATEMENTS) {
         database.exec(statement);
+    }
+
+    // TODO: For a production application, consider a dedicated migration system (e.g., using `node-migrate` or similar)
+    // instead of auto-migrating on every application start. This approach is simple but can
+    // lead to issues in complex deployment scenarios.
+    // Auto-migration for new columns (idempotent via try-catch)
+    try {
+        database.exec('ALTER TABLE events ADD COLUMN start_date TEXT');
+        console.log('[DB] Migrated: Added start_date column');
+    } catch (e: any) {
+        // Ignore if column exists
+    }
+
+    try {
+        database.exec('ALTER TABLE events ADD COLUMN end_date TEXT');
+        console.log('[DB] Migrated: Added end_date column');
+    } catch (e: any) {
+        // Ignore if column exists
     }
 
     console.log('[DB] Schema initialization complete');
