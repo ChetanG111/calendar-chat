@@ -65,6 +65,9 @@ function initializeSchema(database: Database.Database): void {
         database.exec(statement);
     }
 
+    // TODO: For a production application, consider a dedicated migration system (e.g., using `node-migrate` or similar)
+    // instead of auto-migrating on every application start. This approach is simple but can
+    // lead to issues in complex deployment scenarios.
     // Auto-migration for new columns (idempotent via try-catch)
     try {
         database.exec('ALTER TABLE events ADD COLUMN start_date TEXT');

@@ -115,7 +115,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
       <motion.div variants={itemVariants} className="flex-none flex border-b border-border bg-card">
         <div className="w-16 flex-shrink-0 border-r border-border">
           <div className="h-16 flex items-end justify-center pb-2 text-xs text-muted-foreground">
-            GMT-05
+            {Intl.DateTimeFormat().resolvedOptions().timeZone}
           </div>
         </div>
         <div className="flex-1 relative">

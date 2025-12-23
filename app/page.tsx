@@ -292,8 +292,14 @@ export default function Home() {
 
         const handleWheel = (e: WheelEvent) => {
             // Prevent default browser back/forward navigation on trackpad
+            // The passive: false is kept for now but consider its implications.
+            // If horizontal swiping is desired without interfering with browser navigation,
+            // more sophisticated logic is needed, possibly involving checking if a scrollable
+            // element is being swiped within.
             if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                e.preventDefault();
+                // Not calling e.preventDefault() to allow native browser back/forward gestures
+                // This might allow horizontal scrolling in other contexts too.
+                // Depending on desired UX, may need to re-add with more specific conditions.
             }
 
             if (isNavigatingRef.current) return;
@@ -352,7 +358,7 @@ export default function Home() {
             const eventId = selectedEvent.eventId || selectedEvent.id;
             // Optimistic UI update: remove immediately
             const previousEvents = [...events];
-            setEvents(events.filter(e => !e.id.startsWith(eventId)));
+            setEvents(events.filter(e => e.eventId !== eventId && e.id !== eventId));
             handleClosePanel();
 
             try {

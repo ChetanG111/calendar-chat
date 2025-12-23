@@ -32,6 +32,17 @@ function toUtcString(date: Date): string {
 }
 
 /**
+ * Format a Date object to a YYYY-MM-DD string in local time.
+ * This is important for preserving the user's intended date when an event is marked as all-day.
+ */
+function toLocalDateString(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
  * Convert a DbEvent row to a StoredEvent
  */
 function dbEventToStoredEvent(row: DbEvent): StoredEvent {
@@ -86,8 +97,8 @@ export function createEvent(input: CreateEventInput): StoredEvent {
     // Calculate date strings from startAt/endAt if not provided
     // Prefer using the passed startDate/endDate which preserve local date intent.
     // Fallback uses toISOString() which implies UTC date, which might differ from local.
-    const startDate = input.startDate || input.startAt.toISOString().split('T')[0];
-    const endDate = input.endDate || input.endAt.toISOString().split('T')[0];
+    const startDate = input.startDate || toLocalDateString(input.startAt);
+    const endDate = input.endDate || toLocalDateString(input.endAt);
 
     const stmt = db.prepare(`
     INSERT INTO events (
@@ -176,7 +187,7 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
         // Auto-update start_date if not explicitly provided
         if (input.startDate === undefined) {
             updates.push('start_date = @start_date');
-            params.start_date = input.startAt.toISOString().split('T')[0];
+            params.start_date = toLocalDateString(input.startAt);
         }
     }
     if (input.endAt !== undefined) {
@@ -185,7 +196,7 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
         // Auto-update end_date if not explicitly provided
         if (input.endDate === undefined) {
             updates.push('end_date = @end_date');
-            params.end_date = input.endAt.toISOString().split('T')[0];
+            params.end_date = toLocalDateString(input.endAt);
         }
     }
     if (input.startDate !== undefined) {
