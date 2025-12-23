@@ -44,7 +44,7 @@
 
 /* Base body styles */
 body {
-    @apply bg-background-dark text-gray-200 font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased;
     overscroll-behavior-x: none;
 }
 

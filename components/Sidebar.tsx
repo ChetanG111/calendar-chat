@@ -162,21 +162,21 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <motion.aside
-      className="w-64 flex flex-col border-r border-border-dark bg-surface-dark h-full flex-shrink-0 overflow-hidden"
+      className="w-64 flex flex-col border-r border-border-dark bg-card h-full flex-shrink-0 overflow-hidden"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
       <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 p-4">
         {/* Days Header */}
-        <motion.div variants={itemVariants} className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2 select-none">
+        <motion.div variants={itemVariants} className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground mb-2 select-none">
           <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
         </motion.div>
 
         {/* Calendar Grid */}
         <motion.div variants={itemVariants} className="grid grid-cols-7 gap-1 text-center text-sm mb-6 select-none">
           {prevMonthFiller.map((day) => (
-            <span key={`prev-${day}`} className="p-1 text-zinc-600">{day}</span>
+            <span key={`prev-${day}`} className="p-1 text-muted-foreground/50">{day}</span>
           ))}
 
           {currentDays.map((day) => {
@@ -189,7 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 whileTap={{ scale: 0.9 }}
                 onClick={() => onDateChange(new Date(year, month, day))}
                 className={`relative p-1 rounded-full w-8 h-8 flex items-center justify-center mx-auto transition-colors z-0
-                  ${selected ? 'text-white' : 'text-gray-300'}
+                  ${selected ? 'text-primary-foreground' : 'text-foreground'}
                   ${today && !selected ? 'text-primary font-bold' : ''}
                 `}
               >
@@ -206,19 +206,19 @@ const Sidebar: React.FC<SidebarProps> = ({
           })}
 
           {nextMonthFiller.map((day) => (
-            <span key={`next-${day}`} className="p-1 text-zinc-600">{day}</span>
+            <span key={`next-${day}`} className="p-1 text-muted-foreground/50">{day}</span>
           ))}
         </motion.div>
 
         {/* Calendars List */}
         <div className="space-y-4">
           <motion.div variants={itemVariants} className="flex justify-between items-center group/header">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">My Calendars</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Calendars</h3>
             <motion.button
               onClick={() => setIsAdding(true)}
-              whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+              whileHover={{ scale: 1.1, backgroundColor: "var(--accent)" }}
               whileTap={{ scale: 0.9 }}
-              className="w-5 h-5 flex items-center justify-center rounded text-gray-500 cursor-pointer"
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground cursor-pointer hover:bg-accent hover:text-foreground"
             >
               <span className="material-icons text-[16px]">add</span>
             </motion.button>
@@ -247,7 +247,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {hoveredCalendarId === cat.id && (
                       <motion.div
                         layoutId="calendar-hover-bg"
-                        className="absolute inset-0 bg-white/5 rounded-lg -z-10"
+                        className="absolute inset-0 bg-accent rounded-lg -z-10"
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -258,7 +258,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => onToggleCalendar(cat.id)}
-                        className={`w-4 h-4 rounded-[4px] border flex items-center justify-center shadow-sm transition-colors ${cat.checked ? cat.theme.bg.split('/')[0].replace('bg-', 'bg-').replace('20', '500') + ' border-transparent' : 'border-gray-600 hover:border-gray-500'}`}
+                        className={`w-4 h-4 rounded-[4px] border flex items-center justify-center shadow-sm transition-colors ${cat.checked ? cat.theme.bg.split('/')[0].replace('bg-', 'bg-').replace('20', '500') + ' border-transparent' : 'border-muted-foreground hover:border-foreground'}`}
                       >
                         <AnimatePresence>
                           {cat.checked && (
@@ -278,7 +278,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {editingId === cat.id ? (
                         <input
                           autoFocus
-                          className="bg-transparent border-b border-primary text-sm text-white focus:outline-none w-full pb-0.5"
+                          className="bg-transparent border-b border-primary text-sm text-foreground focus:outline-none w-full pb-0.5"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           onClick={(e) => e.stopPropagation()}
@@ -297,7 +297,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                               setEditName(cat.label);
                             }
                           }}
-                          className={`text-sm text-gray-300 transition-colors truncate select-none flex-1 ${cat.isDefault ? 'font-medium cursor-default' : 'cursor-pointer'}`}
+                          className={`text-sm text-foreground transition-colors truncate select-none flex-1 ${cat.isDefault ? 'font-medium cursor-default' : 'cursor-pointer'}`}
                         >
                           {cat.label}
                         </span>
@@ -308,10 +308,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                       <motion.button
                         layout
-                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                        whileHover={{ scale: 1.1, backgroundColor: "var(--accent)" }}
                         whileTap={{ scale: 0.9 }}
                         onClick={(e) => { e.stopPropagation(); setOpenColorMenuId(cat.id); }}
-                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white transition-colors"
+                        className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
                         title="Change color"
                       >
                         <span className="material-icons text-[16px]">palette</span>
@@ -320,14 +320,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {!cat.isDefault && (
                         <motion.button
                           layout
-                          whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                          whileHover={{ scale: 1.1, backgroundColor: "var(--accent)" }}
                           whileTap={{ scale: 0.9 }}
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingId(cat.id);
                             setEditName(cat.label);
                           }}
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white transition-colors"
+                          className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
                           title="Rename calendar"
                         >
                           <span className="material-icons text-[16px]">edit</span>
@@ -337,10 +337,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {!cat.isDefault && (
                         <motion.button
                           layout
-                          whileHover={{ scale: 1.1, backgroundColor: "rgba(255,68,68,0.15)" }}
+                          whileHover={{ scale: 1.1, backgroundColor: "hsl(var(--destructive) / 0.15)" }}
                           whileTap={{ scale: 0.9 }}
                           onClick={(e) => { e.stopPropagation(); onDeleteCalendar(cat.id); }}
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-400 transition-colors"
+                          className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive transition-colors"
                           title="Delete calendar"
                         >
                           <span className="material-icons text-[16px]">delete</span>
@@ -435,7 +435,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
       
-      <div className="px-4 py-3 border-t border-white/5 bg-surface-dark flex-shrink-0">
+      <div className="px-4 py-3 border-t border-white/5 bg-card flex-shrink-0">
         <SettingsMenu />
       </div>
     </motion.aside>

@@ -129,31 +129,31 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
 
   return (
     <motion.div 
-      className="flex flex-1 flex-col h-full bg-background-dark overflow-hidden"
+      className="flex flex-1 flex-col h-full bg-background overflow-hidden"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {/* Day Header */}
-      <motion.div variants={itemVariants} className="flex-none px-6 py-4 border-b border-border-dark bg-surface-dark">
+      <motion.div variants={itemVariants} className="flex-none px-6 py-4 border-b border-border bg-card">
         <div className="flex flex-col">
-          <span className="text-xs uppercase tracking-wide font-semibold text-gray-400">
+          <span className="text-xs uppercase tracking-wide font-semibold text-muted-foreground">
             {currentDate.toLocaleDateString('en-US', { weekday: 'long' })}
           </span>
-          <span className="text-2xl font-bold text-white">
+          <span className="text-2xl font-bold text-foreground">
             {currentDate.getDate()}
           </span>
         </div>
       </motion.div>
 
       {/* All Day Section */}
-      <motion.div variants={itemVariants} className="flex-none border-b border-border-dark bg-surface-dark min-h-[50px]">
+      <motion.div variants={itemVariants} className="flex-none border-b border-border bg-card min-h-[50px]">
         <div className="flex h-full">
-          <div className="w-16 flex-shrink-0 border-r border-border-dark flex items-center justify-center text-xs text-gray-500 bg-surface-dark">
+          <div className="w-16 flex-shrink-0 border-r border-border flex items-center justify-center text-xs text-muted-foreground bg-card">
             All-day
           </div>
           <div
-            className="flex-1 relative cursor-pointer hover:bg-white/5 transition-colors p-1 flex flex-col gap-1 select-none"
+            className="flex-1 relative cursor-pointer hover:bg-accent transition-colors p-1 flex flex-col gap-1 select-none"
             onDoubleClick={() => onNewEvent && onNewEvent({ isAllDay: true, start: currentDate, end: currentDate })}
           >
             <AnimatePresence mode="popLayout" initial={false}>
@@ -190,13 +190,13 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
       </motion.div>
 
       {/* Scrollable Timeline */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark scroll-smooth no-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background scroll-smooth no-scrollbar">
         <div className="relative w-full h-[1440px]">
           <div className="flex h-full">
             {/* Time Column */}
-            <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark text-right text-xs text-gray-500 font-medium z-10 h-full">
+            <div className="w-16 flex-shrink-0 border-r border-border bg-card text-right text-xs text-muted-foreground font-medium z-10 h-full">
               {hours.map(hour => (
-                <motion.div variants={itemVariants} key={hour} className="h-[60px] pr-2 pt-2 border-b border-zinc-800/50 relative">
+                <motion.div variants={itemVariants} key={hour} className="h-[60px] pr-2 pt-2 border-b border-border/50 relative">
                   <span className="relative block text-right">
                     {hour === 0 ? '' : (() => {
                       const isPM = hour >= 12;
@@ -211,13 +211,13 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, calendars, onEve
             {/* Event Area */}
             <div
               ref={containerRef}
-              className="flex-1 relative bg-background-dark h-full cursor-pointer select-none"
+              className="flex-1 relative bg-background h-full cursor-pointer select-none"
               onDoubleClick={(e) => {
                 if (onNewEvent) onNewEvent();
               }}
             >
               {hours.map(hour => (
-                <motion.div variants={itemVariants} key={`grid - ${hour} `} className="h-[60px] border-b border-zinc-800/50 w-full"></motion.div>
+                <motion.div variants={itemVariants} key={`grid - ${hour} `} className="h-[60px] border-b border-border/50 w-full"></motion.div>
               ))}
 
               {currentTimePosition !== null && (

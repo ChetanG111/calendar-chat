@@ -23,6 +23,21 @@ import {
     getViewDateRange,
 } from '@/lib/api/events';
 
+const getViewKey = (view: ViewType, date: Date) => {
+    if (view === 'month') {
+        return `${view}-${date.getFullYear()}-${date.getMonth()}`;
+    }
+    if (view === 'week') {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day;
+        const startOfWeek = new Date(d);
+        startOfWeek.setDate(diff);
+        return `${view}-${startOfWeek.getFullYear()}-${startOfWeek.getMonth()}-${startOfWeek.getDate()}`;
+    }
+    return `${view}-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+};
+
 export default function Home() {
     const [currentView, setCurrentView] = useState<ViewType>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -233,7 +248,7 @@ export default function Home() {
 
         return (
             <motion.div
-                key={`${currentView}-${currentDate.toISOString().split('T')[0]}`} // Trigger animation on date change
+                key={getViewKey(currentView, currentDate)} // Trigger animation on view or meaningful date change
                 custom={slideDirection}
                 variants={viewVariants}
                 initial="initial"
@@ -391,7 +406,7 @@ export default function Home() {
     };
 
     return (
-        <div onClick={handleBackgroundClick} className="flex flex-col h-screen bg-background-dark text-gray-200 overflow-hidden font-sans">
+        <div onClick={handleBackgroundClick} className="flex flex-col h-screen bg-background text-foreground overflow-hidden font-sans">
 
             <EventPanel
                 isOpen={isPanelOpen}
@@ -405,12 +420,12 @@ export default function Home() {
                 calendars={calendars}
             />
 
-            <header className="h-16 flex-none border-b border-border-dark bg-surface-dark z-50 flex items-center justify-between px-4 relative">
+            <header className="h-16 flex-none border-b border-border bg-card z-50 flex items-center justify-between px-4 relative">
                 <div className="flex items-center gap-6">
                     {/* Sidebar Toggle */}
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(!isSidebarOpen); }}
-                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
                         aria-label="Toggle Sidebar"
                     >
                         {isSidebarOpen ? (
@@ -422,16 +437,16 @@ export default function Home() {
 
                     {/* Date Navigation Group */}
                     <div className="flex items-center gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); handleDateNav('prev'); }} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                        <button onClick={(e) => { e.stopPropagation(); handleDateNav('prev'); }} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                             <ChevronLeft size={18} animateOnHover />
                         </button>
                         <h1
-                            className="text-lg font-semibold tracking-tight text-white hidden md:block min-w-[180px] text-center cursor-pointer hover:text-gray-300 transition-colors"
+                            className="text-lg font-semibold tracking-tight text-foreground hidden md:block min-w-[180px] text-center cursor-pointer hover:text-muted-foreground transition-colors"
                             onClick={(e) => { e.stopPropagation(); setCurrentView('month'); }}
                         >
                             {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </h1>
-                        <button onClick={(e) => { e.stopPropagation(); handleDateNav('next'); }} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                        <button onClick={(e) => { e.stopPropagation(); handleDateNav('next'); }} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
                             <ChevronRight size={18} animateOnHover />
                         </button>
                     </div>
@@ -446,7 +461,7 @@ export default function Home() {
                         variant="outline"
                         size="sm"
                         onClick={(e) => { e.stopPropagation(); setCurrentDate(new Date()); }}
-                        className="mr-4 text-gray-300 border-zinc-600 bg-transparent hover:bg-white/10 hover:text-white hover:border-zinc-500"
+                        className="mr-4 text-muted-foreground border-border bg-transparent hover:bg-accent hover:text-foreground hover:border-border"
                         hoverScale={1.02}
                         tapScale={0.98}
                     >
@@ -454,7 +469,7 @@ export default function Home() {
                     </Button>
                     <img
                         alt="User"
-                        className="w-8 h-8 rounded-full border border-gray-700 cursor-pointer object-cover hover:border-gray-500 transition-colors"
+                        className="w-8 h-8 rounded-full border border-border cursor-pointer object-cover hover:border-muted-foreground transition-colors"
                         src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2Nx-sIaN8vRXbzHj3sYwqql_Z62Zo5iPv6WLQ1F8UwxwcPmaULdNdyCSFy_6J3t48cndAiY_as21YB8kGM4Bpb8oa3eKqt2eygDwr9WIz2q-UsaQ5YAhs5dQrLGkWFi6Njyv4fL5sm3a1KX84Zeg30ObAxbIqk6Nu9UaL9tDzOp0RP_a7X5J8FUx-PyCG3THHFIx4-QxAk3LorTFSrSZUKE4FFO38qPSX50XHuI3y0vnZBQnVchYDYnYCzMRCjjSFZ1o4j6n5oq_G"
                     />
                 </div>
@@ -484,7 +499,7 @@ export default function Home() {
                     )}
                 </AnimatePresence>
 
-                <main className="flex-1 flex flex-col min-w-0 bg-background-dark relative overflow-hidden transition-all duration-300 ease-in-out">
+                <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden transition-all duration-300 ease-in-out">
                     <AnimatePresence mode="popLayout" custom={slideDirection} initial={false}>
                         {renderView()}
                     </AnimatePresence>

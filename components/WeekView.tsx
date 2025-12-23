@@ -106,15 +106,15 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
 
   return (
     <motion.div 
-      className="flex flex-1 flex-col min-w-0 bg-background-dark relative h-full"
+      className="flex flex-1 flex-col min-w-0 bg-background relative h-full"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {/* Week Header */}
-      <motion.div variants={itemVariants} className="flex-none flex border-b border-border-dark bg-surface-dark">
-        <div className="w-16 flex-shrink-0 border-r border-border-dark">
-          <div className="h-16 flex items-end justify-center pb-2 text-xs text-gray-500">
+      <motion.div variants={itemVariants} className="flex-none flex border-b border-border bg-card">
+        <div className="w-16 flex-shrink-0 border-r border-border">
+          <div className="h-16 flex items-end justify-center pb-2 text-xs text-muted-foreground">
             GMT-05
           </div>
         </div>
@@ -125,14 +125,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
               const isSelected = day.getDate() === currentDate.getDate();
               return (
                 <div key={idx} className={`h-16 flex flex-col items-center justify-center relative ${active ? 'bg-primary/5' : ''}`}>
-                  <span className={`text-xs font-medium uppercase mb-1 ${active ? 'text-primary' : 'text-gray-400'}`}>
+                  <span className={`text-xs font-medium uppercase mb-1 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
                     {day.toLocaleDateString('en-US', { weekday: 'short' })}
                   </span>
                   <button
                     onClick={() => onDateChange(day)}
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-semibold transition-all
-                    ${active ? 'bg-primary text-white' : 'text-gray-200 hover:bg-white/10'}
-                    ${!active && isSelected ? 'bg-white/10' : ''}
+                    ${active ? 'bg-primary text-white' : 'text-foreground hover:bg-accent'}
+                    ${!active && isSelected ? 'bg-accent' : ''}
                   `}>
                     {day.getDate()}
                   </button>
@@ -142,14 +142,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
           </div>
           {/* Vertical grid lines */}
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark" style={{ left: `${((i + 1) / 7) * 100}%` }} />
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-border" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
       </motion.div>
 
       {/* All Day Section */}
-      <motion.div variants={itemVariants} className="flex-none flex border-b border-border-dark bg-surface-dark min-h-[40px]">
-        <div className="w-16 flex-shrink-0 border-r border-border-dark flex items-center justify-center text-xs text-gray-500 p-2">
+      <motion.div variants={itemVariants} className="flex-none flex border-b border-border bg-card min-h-[40px]">
+        <div className="w-16 flex-shrink-0 border-r border-border flex items-center justify-center text-xs text-muted-foreground p-2">
           All-day
         </div>
         <div className="flex-1 relative">
@@ -157,7 +157,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
             {weekDays.map((day, idx) => (
               <div
                 key={idx}
-                className="relative hover:bg-white/5 transition-colors cursor-pointer group select-none"
+                className="relative hover:bg-accent transition-colors cursor-pointer group select-none"
                 onDoubleClick={() => onNewEvent && onNewEvent({
                   isAllDay: true,
                   start: day,
@@ -201,18 +201,18 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
           </div>
           {/* Vertical grid lines */}
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark pointer-events-none" style={{ left: `${((i + 1) / 7) * 100}%` }} />
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-border pointer-events-none" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
       </motion.div>
 
       {/* Main Grid */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background-dark no-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background no-scrollbar">
         <div className="flex h-[1440px] relative">
           {/* Time Labels */}
-          <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark z-10 text-right pr-2 pt-2 select-none sticky left-0">
+          <div className="w-16 flex-shrink-0 border-r border-border bg-card z-10 text-right pr-2 pt-2 select-none sticky left-0">
             {hours.map(h => (
-              <motion.div variants={itemVariants} key={h} className="h-[60px] text-xs text-gray-500 relative -top-3">
+              <motion.div variants={itemVariants} key={h} className="h-[60px] text-xs text-muted-foreground relative -top-3">
                 {h === 0 ? '' : (h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`)}
               </motion.div>
             ))}
@@ -223,7 +223,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onD
             {/* Horizontal Lines - full width across all columns */}
             <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
               {hours.map(h => (
-                <motion.div variants={itemVariants} key={h} className="h-[60px] border-b border-zinc-800/50 w-full"></motion.div>
+                <motion.div variants={itemVariants} key={h} className="h-[60px] border-b border-border/50 w-full"></motion.div>
               ))}
             </div>
 

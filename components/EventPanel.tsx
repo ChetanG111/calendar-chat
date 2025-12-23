@@ -536,11 +536,11 @@ const EventPanel: React.FC<EventPanelProps> = ({
                     animate="visible"
                     exit="exit"
                     onClick={(e) => e.stopPropagation()}
-                    className="fixed right-6 top-20 bottom-6 w-[420px] bg-[#202124]/90 backdrop-blur-xl rounded-2xl shadow-[0_24px_48px_rgba(0,0,0,0.75)] border border-white/10 font-sans text-[#e8eaed] z-[60] overflow-hidden flex flex-col"
+                    className="fixed right-6 top-20 bottom-6 w-[420px] bg-card/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-border font-sans text-foreground z-[60] overflow-hidden flex flex-col"
                 >
                     {/* Header */}
-                    <div className="flex-none flex items-center justify-between px-4 py-3 bg-transparent border-b border-white/10">
-                        <motion.div variants={itemVariants} className="flex items-center gap-1 text-sm text-[#9aa0a6] px-2 py-1">
+                    <div className="flex-none flex items-center justify-between px-4 py-3 bg-transparent border-b border-border">
+                        <motion.div variants={itemVariants} className="flex items-center gap-1 text-sm text-muted-foreground px-2 py-1">
                             <span className="material-symbols-outlined text-[18px]">
                                 {mode === 'view' ? 'event' : (mode === 'edit' ? 'edit_calendar' : 'add_circle')}
                             </span>
@@ -550,31 +550,31 @@ const EventPanel: React.FC<EventPanelProps> = ({
                             {mode === 'view' && (
                                 <>
                                     <motion.button
-                                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                                        whileHover={{ scale: 1.1, backgroundColor: "var(--accent)" }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={onEdit}
-                                        className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] rounded-full transition-colors"
+                                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full transition-colors"
                                         title="Edit event"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">edit</span>
                                     </motion.button>
                                     <motion.button
-                                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                                        whileHover={{ scale: 1.1, backgroundColor: "var(--accent)" }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={onDelete}
-                                        className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] rounded-full transition-colors"
+                                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full transition-colors"
                                         title="Delete event"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">delete</span>
                                     </motion.button>
-                                    <div className="w-[1px] h-4 bg-white/10 mx-1"></div>
+                                    <div className="w-[1px] h-4 bg-border mx-1"></div>
                                 </>
                             )}
                             <motion.button
-                                whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                                whileHover={{ scale: 1.1, backgroundColor: "var(--accent)" }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={onClose}
-                                className="w-8 h-8 flex items-center justify-center text-[#9aa0a6] hover:text-[#e8eaed] rounded-full transition-colors"
+                                className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full transition-colors"
                                 title="Close"
                             >
                                 <span className="material-symbols-outlined text-[18px]">close</span>

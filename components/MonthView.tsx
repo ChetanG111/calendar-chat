@@ -77,22 +77,22 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
 
   return (
     <motion.div 
-      className="flex flex-col flex-grow h-full bg-background-dark"
+      className="flex flex-col flex-grow h-full bg-background"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {/* Weekday Header */}
-      <motion.div variants={containerVariants} className="grid grid-cols-7 border-b border-border-dark bg-surface-dark">
+      <motion.div variants={containerVariants} className="grid grid-cols-7 border-b border-border bg-card">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <motion.div variants={itemVariants} key={day} className="text-center py-3 text-sm font-semibold text-gray-400 border-r border-transparent">
+          <motion.div variants={itemVariants} key={day} className="text-center py-3 text-sm font-semibold text-muted-foreground border-r border-transparent">
             {day}
           </motion.div>
         ))}
       </motion.div>
 
       {/* Grid */}
-      <motion.div variants={containerVariants} ref={containerRef} className="grid grid-cols-7 flex-grow border-l border-border-dark">
+      <motion.div variants={containerVariants} ref={containerRef} className="grid grid-cols-7 flex-grow border-l border-border">
         {grid.map((cell, idx) => {
           const isToday = new Date().toDateString() === cell.date.toDateString();
           const cellEnd = new Date(cell.date);
@@ -108,14 +108,14 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
                 onDateChange(cell.date); // optional: still update current date context
                 if (onNewEvent) onNewEvent({ start: cell.date, end: cell.date });
               }}
-              className={`min-h-[120px] border-b border-r border-border-dark p-2 relative group hover:bg-white/5 transition-colors cursor-pointer select-none
-                ${cell.type !== 'current' ? 'bg-black/20' : ''}
+              className={`min-h-[120px] border-b border-r border-border p-2 relative group hover:bg-accent transition-colors cursor-pointer select-none
+                ${cell.type !== 'current' ? 'bg-muted/30' : ''}
               `}
             >
               <div className="flex justify-end mb-2">
                 <span className={`
                   text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full
-                  ${isToday ? 'bg-primary text-white' : (cell.type === 'current' ? 'text-gray-200' : 'text-gray-600')}
+                  ${isToday ? 'bg-primary text-white' : (cell.type === 'current' ? 'text-foreground' : 'text-muted-foreground')}
                 `}>
                   {cell.day}
                 </span>
@@ -143,14 +143,14 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, calendars, o
                         className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors ${ev.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.hover}`} `}
                       >
                         <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`}></div>
-                        <span className="text-xs font-medium text-gray-400 truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                        <span className="text-xs text-gray-300 truncate font-medium">{ev.title}</span>
+                        <span className="text-xs font-medium text-muted-foreground truncate hidden xl:inline">{ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                        <span className="text-xs text-foreground truncate font-medium">{ev.title}</span>
                       </motion.div>
                     )
                   })}
                 </AnimatePresence>
                 {dayEvents.length > 3 && (
-                  <div className="text-xs text-gray-500 font-medium px-2 py-1">
+                  <div className="text-xs text-muted-foreground font-medium px-2 py-1">
                     {dayEvents.length - 3} more
                   </div>
                 )}

@@ -20,7 +20,7 @@ export default function ViewSwitcher({ currentView, onChange }: ViewSwitcherProp
     ] as const;
 
     return (
-        <div className="flex items-center bg-zinc-800 p-1 rounded-lg border border-border-dark relative">
+        <div className="flex items-center bg-card p-1 rounded-lg border border-border relative">
             {items.map((item) => {
                 const isActive = currentView === item.id;
                 const isChat = item.id === "chat";
@@ -33,7 +33,7 @@ export default function ViewSwitcher({ currentView, onChange }: ViewSwitcherProp
                             onClick={() => onChange(item.id)}
                             className={twMerge(
                                 "relative px-3 py-1 text-xs font-medium rounded-md transition-colors z-10 outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                                isActive ? "text-white" : "text-gray-400 hover:text-white",
+                                isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                                 isChat && "flex items-center gap-1"
                             )}
                             style={{

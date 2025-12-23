@@ -161,9 +161,9 @@ export default function DatePicker({ value, onChange, placeholder = "Select date
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="bg-transparent text-[#e8eaed] text-sm border-0 border-b border-transparent focus:border-blue-500 hover:bg-white/5 focus:ring-0 px-2 py-1 transition-all rounded-sm flex items-center gap-2 font-medium min-w-[120px]"
+                className="bg-transparent text-foreground text-sm border-0 border-b border-transparent focus:border-blue-500 hover:bg-accent focus:ring-0 px-2 py-1 transition-all rounded-sm flex items-center gap-2 font-medium min-w-[120px]"
             >
-                <span className="material-symbols-outlined text-gray-400 text-[18px]">calendar_today</span>
+                <span className="material-symbols-outlined text-muted-foreground text-[18px]">calendar_today</span>
                 <span>{displayDate}</span>
             </button>
 
@@ -174,23 +174,23 @@ export default function DatePicker({ value, onChange, placeholder = "Select date
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="absolute top-full left-0 mt-2 z-[100] bg-[#202124] border border-[#5f6368] rounded-xl shadow-2xl p-4 w-[300px]"
+                        className="absolute top-full left-0 mt-2 z-[100] bg-popover border border-border rounded-xl shadow-2xl p-4 w-[300px]"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between mb-4">
-                            <span className="font-semibold text-[#e8eaed] text-base">
+                            <span className="font-semibold text-foreground text-base">
                                 {viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                             </span>
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={handlePrevMonth}
-                                    className="p-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                    className="p-1 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                     <ChevronLeft size={20} />
                                 </button>
                                 <button
                                     onClick={handleNextMonth}
-                                    className="p-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                    className="p-1 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                     <ChevronRight size={20} />
                                 </button>
@@ -200,7 +200,7 @@ export default function DatePicker({ value, onChange, placeholder = "Select date
                         {/* Days Header */}
                         <div className="grid grid-cols-7 mb-2">
                             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                                <div key={d} className="text-center text-xs font-medium text-gray-500 py-1">
+                                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
                                     {d}
                                 </div>
                             ))}
@@ -210,7 +210,7 @@ export default function DatePicker({ value, onChange, placeholder = "Select date
                         <div className="grid grid-cols-7 gap-1">
                             {/* Prev Month */}
                             {prevFillers.map((item, i) => (
-                                <div key={`prev-${i}`} className="h-9 flex items-center justify-center text-sm text-gray-600 select-none">
+                                <div key={`prev-${i}`} className="h-9 flex items-center justify-center text-sm text-muted-foreground/50 select-none">
                                     {item.day}
                                 </div>
                             ))}
@@ -234,12 +234,12 @@ export default function DatePicker({ value, onChange, placeholder = "Select date
                                         variants={dayVariants}
                                         initial="hidden"
                                         animate="visible"
-                                        whileHover={{ scale: 1.1, backgroundColor: isSelected ? '#1a73e8' : 'rgba(255,255,255,0.1)' }}
+                                        whileHover={{ scale: 1.1, backgroundColor: isSelected ? '#1a73e8' : 'var(--accent)' }}
                                         whileTap={{ scale: 0.95 }}
                                         onClick={() => handleDateClick(item.day)}
                                         className={`
                                             h-9 w-9 rounded-full flex items-center justify-center text-sm font-medium transition-colors relative
-                                            ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'text-[#e8eaed]'}
+                                            ${isSelected ? 'bg-blue-600 text-white shadow-md' : 'text-foreground'}
                                             ${isToday ? 'text-blue-400 font-bold bg-blue-400/10' : ''}
                                         `}
                                     >
@@ -250,14 +250,14 @@ export default function DatePicker({ value, onChange, placeholder = "Select date
 
                             {/* Next Month */}
                             {nextFillers.map((item, i) => (
-                                <div key={`next-${i}`} className="h-9 flex items-center justify-center text-sm text-gray-600 select-none">
+                                <div key={`next-${i}`} className="h-9 flex items-center justify-center text-sm text-muted-foreground/50 select-none">
                                     {item.day}
                                 </div>
                             ))}
                         </div>
 
                         {/* Footer */}
-                        <div className="flex justify-between items-center mt-4 pt-3 border-t border-white/10">
+                        <div className="flex justify-between items-center mt-4 pt-3 border-t border-border">
                             <button
                                 onClick={handleClear}
                                 className="text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium px-2 py-1 rounded hover:bg-blue-400/10"

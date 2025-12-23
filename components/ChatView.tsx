@@ -182,7 +182,7 @@ function UserMessage({ content }: { content: string }) {
     >
       <motion.div
         variants={bubbleContentVariants}
-        className="bg-surface-dark text-gray-100 px-5 py-3 rounded-2xl rounded-tr-sm max-w-[80%] border border-border-dark overflow-hidden"
+        className="bg-card text-foreground px-5 py-3 rounded-2xl rounded-tr-sm max-w-[80%] border border-border overflow-hidden"
       >
         <motion.span variants={textContentVariants} className="inline-block">
           {content}
@@ -190,7 +190,7 @@ function UserMessage({ content }: { content: string }) {
       </motion.div>
       <motion.div
         variants={avatarVariants}
-        className="ml-3 mt-1 w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-black flex-shrink-0"
+        className="ml-3 mt-1 w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-background flex-shrink-0"
       >
         U
       </motion.div>
@@ -220,9 +220,9 @@ function AssistantMessage({
     >
       <motion.div
         variants={avatarVariants}
-        className="mt-1 w-8 h-8 rounded-full bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0"
+        className="mt-1 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0"
       >
-        <span className="material-symbols-outlined text-gray-400 text-sm">smart_toy</span>
+        <span className="material-symbols-outlined text-muted-foreground text-sm">smart_toy</span>
       </motion.div>
 
       <motion.div
@@ -239,9 +239,9 @@ function AssistantMessage({
               damping: 25,
             }}
             className={clsx(
-              "text-gray-200 whitespace-pre-wrap",
-              isSuccess && "text-green-300",
-              isError && "text-red-300"
+              "text-foreground whitespace-pre-wrap",
+              isSuccess && "text-green-500",
+              isError && "text-red-500"
             )}
           >
             {message.content}
@@ -320,8 +320,8 @@ function EventCard({ event, intent, compact, onNavigateToEvent, calendars = [] }
   const theme = calendar?.theme;
 
   const typeBorderColor = theme?.border || 'border-gray-500';
-  const typeBgColor = compact ? 'bg-surface-dark/50' : (theme?.bg || 'bg-gray-500/10');
-  const typeHoverBgColor = theme?.hover || 'hover:bg-gray-500/20';
+  const typeBgColor = compact ? 'bg-card/50' : (theme?.bg || 'bg-muted/50');
+  const typeHoverBgColor = theme?.hover || 'hover:bg-muted/80';
 
   return (
     <div
@@ -338,8 +338,8 @@ function EventCard({ event, intent, compact, onNavigateToEvent, calendars = [] }
     >
       <div className="flex items-start justify-between">
         <div>
-          <h4 className="font-medium text-white group-hover:underline decoration-white/30 underline-offset-4">{event.title}</h4>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h4 className="font-medium text-foreground group-hover:underline decoration-foreground/30 underline-offset-4">{event.title}</h4>
+          <p className="text-sm text-muted-foreground mt-0.5">
             {event.isAllDay ? (
               event.startDate && event.endDate && event.startDate !== event.endDate ? (
                 `${formatDate(event.start)} - ${formatDate(event.end)}`
@@ -356,13 +356,13 @@ function EventCard({ event, intent, compact, onNavigateToEvent, calendars = [] }
           </p>
         </div>
         {event.rrule && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
             Recurring
           </span>
         )}
 
         {/* Hover indicator icon */}
-        <span className="material-symbols-outlined text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="material-symbols-outlined text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
           arrow_forward
         </span>
       </div>
@@ -384,46 +384,52 @@ const ChatView: React.FC<ChatViewProps> = ({
   calendars = [],
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [inputValue, setInputValue] = useState('');
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-    // Auto-scroll to bottom when new messages arrive
-    useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-  
-    // Auto-resize textarea
-    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setInputValue(e.target.value);
-      const textarea = e.target;
-      textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;        
-    }, []);
-  
-    // Send message
-    const handleSend = useCallback(async () => {
-      const trimmed = inputValue.trim();
-      if (!trimmed) return;
+  const [inputValue, setInputValue] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: trimmed,
-      timestamp: new Date(),
-    };
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
-  }, [inputValue]);
+  // Auto-resize textarea
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+  }, []);
+
+  // Send message
+  const handleSend = useCallback(async () => {
+    if (isAnimating) return;
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
+
+    setIsAnimating(true);
+
+    // Delay message appearance to sync with animation "fly out"
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: trimmed,
+        timestamp: new Date(),
+      }]);
+      setInputValue('');
+
+      // Reset textarea height
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    }, 400);
+
+    setTimeout(() => setIsAnimating(false), 1200);
+  }, [inputValue, isAnimating]);
 
   // Handle Enter key
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -434,7 +440,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   }, [handleSend]);
 
   return (
-    <div className="flex flex-col h-full bg-background-dark relative overflow-hidden">
+    <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* Chat Content Area */}
       <div className="flex-grow overflow-y-auto flex flex-col items-center pt-8 pb-32 px-4 custom-scrollbar">
         <div className="w-full max-w-3xl space-y-6">
@@ -447,7 +453,7 @@ const ChatView: React.FC<ChatViewProps> = ({
               transition={{ duration: 0.3 }}
             >
               <motion.div
-                className="w-16 h-16 rounded-full bg-surface-dark border border-border-dark flex items-center justify-center mb-4"
+                className="w-16 h-16 rounded-full bg-card border border-border flex items-center justify-center mb-4"
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{
@@ -457,10 +463,10 @@ const ChatView: React.FC<ChatViewProps> = ({
                   delay: 0.1,
                 }}
               >
-                <span className="material-symbols-outlined text-gray-400 text-3xl">calendar_month</span>
+                <span className="material-symbols-outlined text-muted-foreground text-3xl">calendar_month</span>
               </motion.div>
               <motion.h2
-                className="text-xl font-semibold text-white mb-2"
+                className="text-xl font-semibold text-foreground mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -473,7 +479,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                 Calendar Assistant
               </motion.h2>
               <motion.p
-                className="text-gray-400 max-w-md"
+                className="text-muted-foreground max-w-md"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -512,7 +518,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                         setInputValue(suggestion);
                         textareaRef.current?.focus();
                       }}
-                      className="px-3 py-1.5 text-sm text-gray-300 bg-surface-dark border border-border-dark rounded-full hover:bg-white/5 transition-colors"
+                      className="px-3 py-1.5 text-sm text-muted-foreground bg-card border border-border rounded-full hover:bg-accent hover:text-accent-foreground hover:border-accent transition-colors"
                       whileHover={{
                         scale: 1.05,
                         transition: { duration: 0.2 }
@@ -552,7 +558,7 @@ const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Input Area */}
       <div className="absolute bottom-8 left-0 right-0 flex justify-center px-4">
-        <div className="w-full max-w-3xl bg-surface-dark rounded-[2rem] p-2 shadow-2xl border border-border-dark flex items-center gap-2 relative">
+        <div className="w-full max-w-3xl bg-card rounded-[2rem] p-2 shadow-2xl border border-border flex items-center gap-2 relative">
 
           {/* Add Button & Menu */}
           <div className="relative flex-shrink-0 ml-1">
@@ -562,26 +568,26 @@ const ChatView: React.FC<ChatViewProps> = ({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsMenuOpen(false)}
                 />
-                <div className="absolute bottom-12 left-0 w-52 bg-zinc-800/95 backdrop-blur-sm border border-zinc-700 rounded-2xl shadow-2xl z-50 overflow-hidden py-1.5 mb-2 transform origin-bottom-left animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute bottom-12 left-0 w-52 bg-card/95 backdrop-blur-sm border border-border rounded-2xl shadow-2xl z-50 overflow-hidden py-1.5 mb-2 transform origin-bottom-left animate-in fade-in zoom-in-95 duration-200">
                   <button
                     onClick={() => { onNavigateToday?.(); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-gray-200 hover:bg-white/10 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
                   >
-                    <span className="material-symbols-outlined text-gray-400 text-[20px]">today</span>
+                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">today</span>
                     Today
                   </button>
                   <button
                     onClick={() => { onViewChange?.('week'); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-gray-200 hover:bg-white/10 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
                   >
-                    <span className="material-symbols-outlined text-gray-400 text-[20px]">view_week</span>
+                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">view_week</span>
                     Week
                   </button>
                   <button
                     onClick={() => { onViewChange?.('month'); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-gray-200 hover:bg-white/10 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
                   >
-                    <span className="material-symbols-outlined text-gray-400 text-[20px]">calendar_month</span>
+                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">calendar_month</span>
                     Month
                   </button>
                 </div>
@@ -592,8 +598,8 @@ const ChatView: React.FC<ChatViewProps> = ({
               className={clsx(
                 "w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200",
                 isMenuOpen
-                  ? "text-white rotate-45"
-                  : "text-gray-400 hover:text-white"
+                  ? "text-foreground rotate-45"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <span className="material-symbols-outlined text-[24px]">add</span>
@@ -606,7 +612,7 @@ const ChatView: React.FC<ChatViewProps> = ({
             value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-white placeholder-gray-500 resize-none py-3 px-2 text-base"
+            className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground resize-none py-3 px-2 text-base"
             placeholder="Ask AI anything..."
             rows={1}
             style={{ minHeight: '44px', maxHeight: '120px' }}
@@ -621,10 +627,10 @@ const ChatView: React.FC<ChatViewProps> = ({
                 "w-8 h-8 flex items-center justify-center rounded-full transition-colors",
                 inputValue.trim()
                   ? "bg-primary text-white hover:brightness-110"
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
               )}
             >
-              <Send size={18} animateOnHover />
+              <Send size={18} animate={isAnimating} />
             </button>
           </div>
         </div>
