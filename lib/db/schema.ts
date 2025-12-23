@@ -21,8 +21,6 @@ CREATE TABLE IF NOT EXISTS events (
   description TEXT,
   start_at TEXT NOT NULL,
   end_at TEXT NOT NULL,
-  start_date TEXT,
-  end_date TEXT,
   timezone TEXT NOT NULL,
   is_all_day INTEGER DEFAULT 0,
   rrule TEXT,

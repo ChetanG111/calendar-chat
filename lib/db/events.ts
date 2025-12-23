@@ -17,6 +17,20 @@ import type {
     EventMetadata,
 } from './types';
 
+// Simple in-memory cache for expanded instances
+// Key: "startMs-endMs-expandRecurrence"
+// Value: Array of expanded instances
+const queryCache = new Map<string, ExpandedEventInstance[]>();
+
+/**
+ * Clear the entire query cache
+ * Call this on any DB write operation
+ */
+function invalidateCache() {
+    queryCache.clear();
+    console.log('[Events] Cache invalidated');
+}
+
 /**
  * Generate a unique event ID
  */
@@ -32,14 +46,16 @@ function toUtcString(date: Date): string {
 }
 
 /**
- * Format a Date object to a YYYY-MM-DD string in local time.
- * This is important for preserving the user's intended date when an event is marked as all-day.
+ * Format a Date object to a YYYY-MM-DD string in a specific timezone.
+ * Uses 'en-CA' locale (ISO 8601 format) to ensure YYYY-MM-DD.
  */
-function toLocalDateString(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+function toTimezoneDateString(date: Date, timezone: string): string {
+    try {
+        return date.toLocaleDateString('en-CA', { timeZone: timezone });
+    } catch (e) {
+        console.warn(`[Events] Invalid timezone '${timezone}', falling back to UTC`);
+        return date.toLocaleDateString('en-CA', { timeZone: 'UTC' });
+    }
 }
 
 /**
@@ -64,15 +80,20 @@ function dbEventToStoredEvent(row: DbEvent): StoredEvent {
         }
     }
 
+    const startAt = new Date(row.start_at);
+    const endAt = new Date(row.end_at);
+    // Use the stored timezone, or default to UTC if missing/invalid
+    const timezone = row.timezone || 'UTC';
+
     return {
         id: row.id,
         title: row.title,
         description: row.description,
-        startAt: new Date(row.start_at),
-        endAt: new Date(row.end_at),
-        startDate: row.start_date,
-        endDate: row.end_date,
-        timezone: row.timezone,
+        startAt,
+        endAt,
+        startDate: toTimezoneDateString(startAt, timezone),
+        endDate: toTimezoneDateString(endAt, timezone),
+        timezone,
         isAllDay: row.is_all_day === 1,
         rrule: row.rrule,
         exdates,
@@ -94,18 +115,12 @@ export function createEvent(input: CreateEventInput): StoredEvent {
     const id = input.id || generateEventId();
     const now = toUtcString(new Date());
 
-    // Calculate date strings from startAt/endAt if not provided
-    // Prefer using the passed startDate/endDate which preserve local date intent.
-    // Fallback uses toISOString() which implies UTC date, which might differ from local.
-    const startDate = input.startDate || toLocalDateString(input.startAt);
-    const endDate = input.endDate || toLocalDateString(input.endAt);
-
     const stmt = db.prepare(`
     INSERT INTO events (
-      id, title, description, start_at, end_at, start_date, end_date, timezone,
+      id, title, description, start_at, end_at, timezone,
       is_all_day, rrule, exdates, metadata, created_at, updated_at
     ) VALUES (
-      @id, @title, @description, @start_at, @end_at, @start_date, @end_date, @timezone,
+      @id, @title, @description, @start_at, @end_at, @timezone,
       @is_all_day, @rrule, @exdates, @metadata, @created_at, @updated_at
     )
   `);
@@ -116,8 +131,6 @@ export function createEvent(input: CreateEventInput): StoredEvent {
         description: input.description || null,
         start_at: toUtcString(input.startAt),
         end_at: toUtcString(input.endAt),
-        start_date: startDate,
-        end_date: endDate,
         timezone: input.timezone,
         is_all_day: input.isAllDay ? 1 : 0,
         rrule: input.rrule || null,
@@ -127,6 +140,7 @@ export function createEvent(input: CreateEventInput): StoredEvent {
         updated_at: now,
     });
 
+    invalidateCache();
     console.log(`[Events] Created event: ${id} - "${input.title}"`);
 
     // Fetch and return the created event
@@ -184,29 +198,13 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
     if (input.startAt !== undefined) {
         updates.push('start_at = @start_at');
         params.start_at = toUtcString(input.startAt);
-        // Auto-update start_date if not explicitly provided
-        if (input.startDate === undefined) {
-            updates.push('start_date = @start_date');
-            params.start_date = toLocalDateString(input.startAt);
-        }
     }
     if (input.endAt !== undefined) {
         updates.push('end_at = @end_at');
         params.end_at = toUtcString(input.endAt);
-        // Auto-update end_date if not explicitly provided
-        if (input.endDate === undefined) {
-            updates.push('end_date = @end_date');
-            params.end_date = toLocalDateString(input.endAt);
-        }
     }
-    if (input.startDate !== undefined) {
-        updates.push('start_date = @start_date');
-        params.start_date = input.startDate;
-    }
-    if (input.endDate !== undefined) {
-        updates.push('end_date = @end_date');
-        params.end_date = input.endDate;
-    }
+    // Note: startDate and endDate inputs are ignored as they are derived from startAt/endAt + timezone
+    
     if (input.timezone !== undefined) {
         updates.push('timezone = @timezone');
         params.timezone = input.timezone;
@@ -241,6 +239,7 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
     const stmt = db.prepare(sql);
     stmt.run(params);
 
+    invalidateCache();
     console.log(`[Events] Updated event: ${id}`);
 
     return getEventById(id);
@@ -259,6 +258,7 @@ export function deleteEvent(id: string): boolean {
     const result = stmt.run(id);
 
     if (result.changes > 0) {
+        invalidateCache();
         console.log(`[Events] Deleted event: ${id}`);
         return true;
     }
@@ -280,6 +280,13 @@ export function deleteEvent(id: string): boolean {
  */
 export function queryEventsInRange(options: EventQueryOptions): ExpandedEventInstance[] {
     const { rangeStart, rangeEnd, expandRecurrence = true } = options;
+
+    const cacheKey = `${rangeStart.getTime()}-${rangeEnd.getTime()}-${expandRecurrence}`;
+    if (queryCache.has(cacheKey)) {
+        console.log('[Events] Returning cached instances');
+        return queryCache.get(cacheKey)!;
+    }
+
     const db = getDatabase();
 
     const rangeStartStr = toUtcString(rangeStart);
@@ -337,6 +344,7 @@ export function queryEventsInRange(options: EventQueryOptions): ExpandedEventIns
 
     console.log(`[Events] Query returned ${instances.length} instances for range ${rangeStartStr} to ${rangeEndStr}`);
 
+    queryCache.set(cacheKey, instances);
     return instances;
 }
 

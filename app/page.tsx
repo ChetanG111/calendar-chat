@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { ViewType, CalendarEvent, CalendarCategory, DEFAULT_CALENDARS, getThemeForColor } from '@/types';
+import React, { useState, useEffect, useRef } from 'react';
+import { ViewType, CalendarEvent } from '@/types';
 import Sidebar from '@/components/Sidebar';
 import DayView from '@/components/DayView';
 import WeekView from '@/components/WeekView';
@@ -15,13 +15,7 @@ import { ChevronRight } from '@/components/animate-ui/icons/chevron-right';
 import { PanelLeftOpen } from '@/components/animate-ui/icons/panel-left-open';
 import { PanelLeftClose } from '@/components/animate-ui/icons/panel-left-close';
 import { Button } from '@/components/animate-ui/components/buttons/button';
-import {
-    fetchEvents,
-    createEventApi,
-    updateEventApi,
-    deleteEventApi,
-    getViewDateRange,
-} from '@/lib/api/events';
+import { useCalendar } from '@/components/providers/CalendarContext';
 
 const getViewKey = (view: ViewType, date: Date) => {
     if (view === 'month') {
@@ -39,12 +33,25 @@ const getViewKey = (view: ViewType, date: Date) => {
 };
 
 export default function Home() {
-    const [currentView, setCurrentView] = useState<ViewType>('week');
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const {
+        currentView,
+        currentDate,
+        events,
+        calendars,
+        isLoading,
+        setCurrentView,
+        setCurrentDate,
+        refreshEvents,
+        addCalendar,
+        updateCalendar,
+        deleteCalendar,
+        toggleCalendar,
+        createEvent,
+        updateEvent,
+        deleteEvent
+    } = useCalendar();
+
     const [slideDirection, setSlideDirection] = useState<number>(0);
-    const [events, setEvents] = useState<CalendarEvent[]>([]);
-    const [calendars, setCalendars] = useState<CalendarCategory[]>(DEFAULT_CALENDARS);
-    const [isLoading, setIsLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     // Responsive sidebar init
@@ -69,89 +76,6 @@ export default function Home() {
     const [panelMode, setPanelMode] = useState<EventPanelMode>('view');
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(undefined);
     const [initialEventData, setInitialEventData] = useState<Partial<CalendarEvent> | undefined>(undefined);
-
-    // Selection State (kept for highlighting, though panel doesn't position based on them anymore)
-    const [selectedEventRect, setSelectedEventRect] = useState<DOMRect | null>(null);
-    const [selectedContainerRect, setSelectedContainerRect] = useState<DOMRect | null>(null);
-
-    /**
-     * Load events from the database for the current view
-     */
-    const loadEvents = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            // Get a wider range to ensure we capture all relevant events
-            // For week view, get the whole month; for month view, get surrounding months
-            const { start, end } = getViewDateRange(
-                currentView === 'chat' ? 'month' : currentView,
-                currentDate
-            );
-
-            // Expand the range a bit for better coverage
-            const rangeStart = new Date(start);
-            rangeStart.setDate(rangeStart.getDate() - 7);
-            const rangeEnd = new Date(end);
-            rangeEnd.setDate(rangeEnd.getDate() + 7);
-
-            const loadedEvents = await fetchEvents(rangeStart, rangeEnd);
-            setEvents(loadedEvents);
-        } catch (error) {
-            console.error('Failed to load events:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [currentView, currentDate]);
-
-    // Load events when view or date changes
-    useEffect(() => {
-        loadEvents();
-    }, [loadEvents]);
-
-    // Calendar Management Handlers
-    const handleAddCalendar = (data: { label: string; colorName: string }) => {
-        const newId = crypto.randomUUID();
-        const newCalendar: CalendarCategory = {
-            id: newId,
-            label: data.label,
-            colorName: data.colorName,
-            theme: getThemeForColor(data.colorName),
-            icon: 'check',
-            checked: true
-        };
-        setCalendars([...calendars, newCalendar]);
-    };
-
-    const handleUpdateCalendar = (id: string, updates: Partial<CalendarCategory>) => {
-        setCalendars(calendars.map(cal => {
-            if (cal.id === id) {
-                // Prevent renaming the default calendar
-                if (cal.isDefault && updates.label) {
-                    updates = { ...updates };
-                    delete updates.label;
-                }
-                const updatedCal = { ...cal, ...updates };
-                // If color changed, update theme
-                if (updates.colorName) {
-                    updatedCal.theme = getThemeForColor(updates.colorName);
-                }
-                return updatedCal;
-            }
-            return cal;
-        }));
-    };
-
-    const handleDeleteCalendar = (id: string) => {
-        const calendar = calendars.find(c => c.id === id);
-        if (calendar?.isDefault) return; // Prevent deleting default calendar
-
-        setCalendars(calendars.filter(cal => cal.id !== id));
-    };
-
-    const toggleCalendarVisibility = (id: string) => {
-        setCalendars(calendars.map(cal =>
-            cal.id === id ? { ...cal, checked: !cal.checked } : cal
-        ));
-    };
 
     // Filter events based on visible calendars
     const visibleEventTypes = calendars.filter(c => c.checked).map(c => c.id);
@@ -235,9 +159,9 @@ export default function Home() {
                             setCurrentDate(date);
                             setCurrentView('day');
                         }}
-                        onEventCreated={() => loadEvents()}
-                        onEventUpdated={() => loadEvents()}
-                        onEventDeleted={() => loadEvents()}
+                        onEventCreated={() => refreshEvents()}
+                        onEventUpdated={() => refreshEvents()}
+                        onEventDeleted={() => refreshEvents()}
                         calendars={calendars}
                     />
                 );
@@ -261,7 +185,7 @@ export default function Home() {
         );
     };
 
-    const handleDateNav = useCallback((direction: 'prev' | 'next') => {
+    const handleDateNav = React.useCallback((direction: 'prev' | 'next') => {
         const dir = direction === 'next' ? 1 : -1;
         setSlideDirection(dir);
 
@@ -274,10 +198,10 @@ export default function Home() {
             newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
         }
         setCurrentDate(newDate);
-    }, [currentDate, currentView]);
+    }, [currentDate, currentView, setCurrentDate]);
 
     // Keyboard and horizontal scroll navigation
-    const isNavigatingRef = React.useRef(false); // Ref for debounce
+    const isNavigatingRef = useRef(false); // Ref for debounce
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (isPanelOpen) return; // Don't navigate if panel is open (might be typing)
@@ -356,20 +280,16 @@ export default function Home() {
     const handleDeleteEvent = async () => {
         if (selectedEvent) {
             const eventId = selectedEvent.eventId || selectedEvent.id;
-            // Optimistic UI update: remove immediately
-            const previousEvents = [...events];
-            setEvents(events.filter(e => e.eventId !== eventId && e.id !== eventId));
+            
+            // Optimistic UI update handled by context? No, wait for context.
+            // Actually, we can just call delete and let context refresh.
             handleClosePanel();
 
             try {
-                await deleteEventApi(eventId);
-                // Success: optionally reload to be sure, or trust local state
-                // loadEvents(); 
+                await deleteEvent(eventId);
             } catch (error) {
                 console.error('Failed to delete event:', error);
-                // Revert on failure
-                setEvents(previousEvents);
-                // Ideally show a toast error here
+                // Revert/Toast handled by context error boundary ideally
             }
         }
     };
@@ -377,26 +297,12 @@ export default function Home() {
     const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
         try {
             if (selectedEvent && panelMode === 'edit') {
-                const eventId = selectedEvent.id.includes('_2')
-                    ? selectedEvent.id.split('_').slice(0, 3).join('_')
-                    : selectedEvent.id;
-
-                await updateEventApi(eventId, eventData);
+                await updateEvent(selectedEvent.id, eventData);
             } else {
-                const newEventData = {
-                    title: eventData.title || '(No Title)',
-                    start: eventData.start || new Date(),
-                    end: eventData.end || new Date(new Date().getTime() + 3600000),
-                    type: eventData.type || 'default',
-                    description: eventData.description,
-                    location: eventData.location,
-                    isAllDay: eventData.isAllDay,
-                };
-                await createEventApi(newEventData);
+                await createEvent(eventData);
             }
 
             handleClosePanel();
-            loadEvents();
         } catch (error) {
             console.error('Failed to save event:', error);
         }
@@ -496,10 +402,10 @@ export default function Home() {
                                 currentDate={currentDate}
                                 onDateChange={setCurrentDate}
                                 calendars={calendars}
-                                onAddCalendar={handleAddCalendar}
-                                onUpdateCalendar={handleUpdateCalendar}
-                                onDeleteCalendar={handleDeleteCalendar}
-                                onToggleCalendar={toggleCalendarVisibility}
+                                onAddCalendar={addCalendar}
+                                onUpdateCalendar={updateCalendar}
+                                onDeleteCalendar={deleteCalendar}
+                                onToggleCalendar={toggleCalendar}
                             />
                         </motion.div>
                     )}

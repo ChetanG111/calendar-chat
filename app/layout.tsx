@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { CalendarProvider } from "@/components/providers/CalendarContext";
 
 export const metadata: Metadata = {
     title: "Nexus Calendar",
@@ -32,7 +33,9 @@ export default function RootLayout({
                 />
             </head>
             <body className="h-screen overflow-hidden">
-                {children}
+                <CalendarProvider>
+                    {children}
+                </CalendarProvider>
             </body>
         </html>
     );
