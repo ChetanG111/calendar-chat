@@ -32,6 +32,13 @@ const getViewKey = (view: ViewType, date: Date) => {
     return `${view}-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 };
 
+/**
+ * Render the main calendar page with responsive sidebar, animated day/week/month/chat views, and an interactive event panel.
+ *
+ * The component wires CalendarContext state and handlers into UI controls: it shows a toggleable sidebar for calendar management, renders the selected view with slide/blur transitions keyed by view/date, provides keyboard and horizontal-swipe date navigation, and manages the EventPanel for viewing, creating, editing, and deleting events.
+ *
+ * @returns The React element for the calendar page (header, optional sidebar, animated main view, and EventPanel).
+ */
 export default function Home() {
     const {
         currentView,

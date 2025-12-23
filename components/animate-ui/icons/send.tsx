@@ -44,6 +44,12 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
+/**
+ * Renders the animated Send icon as an SVG.
+ *
+ * @param size - The width and height of the SVG in pixels.
+ * @returns The SVG element containing animated paths for the Send icon.
+ */
 function IconComponent({ size, ...props }: SendProps) {
   const { controls } = useAnimateIconContext();
   const variants = getVariants(animations);
@@ -79,6 +85,12 @@ function IconComponent({ size, ...props }: SendProps) {
   );
 }
 
+/**
+ * Renders the Send icon wrapped by IconWrapper and forwards all received props.
+ *
+ * @param props - Properties for configuring the icon (size, animation key, and other IconProps)
+ * @returns The JSX element containing the Send icon wrapped by IconWrapper
+ */
 function Send(props: SendProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }

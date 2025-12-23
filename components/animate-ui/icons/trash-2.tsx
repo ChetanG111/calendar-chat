@@ -69,6 +69,13 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
+/**
+ * Renders the Trash2 icon as an animated SVG using the component's motion variants.
+ *
+ * @param size - The width and height, in pixels, of the rendered SVG.
+ * @param props - Additional icon props forwarded to the root SVG element.
+ * @returns The SVG element for the Trash2 icon.
+ */
 function IconComponent({ size, ...props }: Trash2Props) {
   const { controls } = useAnimateIconContext();
   const variants = getVariants(animations);
@@ -128,6 +135,12 @@ function IconComponent({ size, ...props }: Trash2Props) {
   );
 }
 
+/**
+ * Renders the Trash2 animated icon inside the shared IconWrapper and forwards all icon props.
+ *
+ * @param props - Icon properties (e.g., size, variant, className) that are forwarded to IconWrapper and the underlying icon component.
+ * @returns A JSX element rendering the wrapped Trash2 icon.
+ */
 function Trash2(props: Trash2Props) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }

@@ -11,6 +11,13 @@ interface ViewSwitcherProps {
     onChange: (view: ViewType) => void;
 }
 
+/**
+ * Renders a horizontally arranged view selector with an animated active indicator.
+ *
+ * @param currentView - The id of the currently selected view ("day" | "week" | "month" | "chat")
+ * @param onChange - Callback invoked with the selected view id when a button is clicked
+ * @returns The switcher UI as a JSX element with an animated active background for the selected item
+ */
 export default function ViewSwitcher({ currentView, onChange }: ViewSwitcherProps) {
     const items = [
         { id: "day", label: "Day" },

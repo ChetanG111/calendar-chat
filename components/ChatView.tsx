@@ -169,7 +169,12 @@ interface ChatViewProps {
 
 // ============================================================================
 // Message Components
-// ============================================================================
+/**
+ * Renders a right-aligned user chat message composed of an animated message bubble and a compact avatar.
+ *
+ * @param content - The text to display inside the user's message bubble
+ * @returns The JSX element for the animated user message and avatar
+ */
 
 function UserMessage({ content }: { content: string }) {
   return (
@@ -198,6 +203,16 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
+/**
+ * Renders an assistant chat message with optional event card(s).
+ *
+ * Displays the message content, colors the text green if it starts with "✅" or red if it starts with "❌", and renders an EventCard when the message contains a single `event` or a list of `events` (for `'queried'` intents).
+ *
+ * @param message - The chat message to render, possibly containing `event`, `events`, and `intent` metadata.
+ * @param onNavigateToEvent - Optional callback invoked with an event's date when an EventCard is activated.
+ * @param calendars - Optional calendar category list used to theme rendered EventCard components.
+ * @returns A JSX element representing the assistant message and any associated event cards.
+ */
 function AssistantMessage({
   message,
   onNavigateToEvent,
@@ -292,6 +307,16 @@ function AssistantMessage({
   );
 }
 
+/**
+ * Renders a clickable event card styled according to calendar theme and compact mode.
+ *
+ * @param event - The calendar event to display (title, start/end, all-day flag, recurrence, etc.)
+ * @param intent - Optional intent string influencing how multiple events are presented (opaque to this component)
+ * @param compact - If true, renders a visually compact variant of the card
+ * @param onNavigateToEvent - Optional callback invoked with the event's start date when the card is activated
+ * @param calendars - Optional list of calendar categories used to determine theming for the event type
+ * @returns A themed, interactive card element representing the provided calendar event
+ */
 function EventCard({ event, intent, compact, onNavigateToEvent, calendars = [] }: {
   event: CalendarEvent;
   intent?: string;

@@ -32,7 +32,10 @@ interface ApiEvent {
 }
 
 /**
- * Convert API event to frontend CalendarEvent
+ * Map a server-side ApiEvent into a frontend CalendarEvent ready for UI use.
+ *
+ * @param apiEvent - Event object from the API
+ * @returns A CalendarEvent with `start` and `end` converted to Date objects; optional fields (`startDate`, `endDate`, `description`) are `undefined` when not present on the API event
  */
 function toCalendarEvent(apiEvent: ApiEvent): CalendarEvent {
     return {

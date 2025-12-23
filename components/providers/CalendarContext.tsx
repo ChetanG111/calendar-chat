@@ -37,6 +37,14 @@ interface CalendarContextType {
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
 
+/**
+ * Provides calendar state and actions to descendant components via CalendarContext.
+ *
+ * Initializes and exposes current view, current date, loaded events, calendar categories,
+ * a loading flag, and functions to load/refresh events, manage calendars, and create/update/delete events.
+ *
+ * @returns A React element that renders a CalendarContext.Provider wrapping the given `children`.
+ */
 export function CalendarProvider({ children }: { children: React.ReactNode }) {
     const [currentView, setCurrentView] = useState<ViewType>('week');
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -193,6 +201,12 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
+/**
+ * Accesses the calendar context provided by CalendarProvider.
+ *
+ * @returns The calendar context containing calendar state and actions for managing views, dates, events, and calendars.
+ * @throws Error if called outside of a CalendarProvider
+ */
 export function useCalendar() {
     const context = useContext(CalendarContext);
     if (context === undefined) {
