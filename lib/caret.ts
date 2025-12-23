@@ -44,6 +44,13 @@ const properties = [
 
 let mirrorDiv: HTMLDivElement | null = null;
 
+/**
+ * Compute the pixel coordinates and line height of the caret at a given character index inside a textarea.
+ *
+ * @param element - The textarea element to measure against.
+ * @param position - The character index (0-based) of the caret within `element.value`.
+ * @returns The caret's `top` and `left` offsets in pixels and its `height` (line height) in pixels as a `CaretCoordinates` object.
+ */
 export function getCaretCoordinates(
     element: HTMLTextAreaElement,
     position: number

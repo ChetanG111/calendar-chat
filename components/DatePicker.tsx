@@ -55,6 +55,18 @@ const dayVariants: Variants = {
     })
 };
 
+/**
+ * Render a date picker input that opens an animated calendar popup for selecting, clearing, or jumping to today's date.
+ *
+ * The component displays the currently selected date (formatted) or a placeholder, lets the user navigate months,
+ * choose a day (emits `YYYY-MM-DD`), clear the selection (emits an empty string), or set today's date.
+ *
+ * @param value - The selected date in `YYYY-MM-DD` format, or an empty string for no selection.
+ * @param onChange - Callback invoked with the new date as `YYYY-MM-DD`, or an empty string when cleared.
+ * @param placeholder - Text to show when no date is selected (defaults to `"Select date"`).
+ * @param className - Optional additional CSS class names applied to the component container.
+ * @returns A JSX element representing the date picker control and its popup calendar.
+ */
 export default function DatePicker({ value, onChange, placeholder = "Select date", className = "" }: DatePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);

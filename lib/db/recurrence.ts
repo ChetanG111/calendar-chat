@@ -99,7 +99,19 @@ function eventOverlapsRange(
 }
 
 /**
- * Convert a StoredEvent to an ExpandedEventInstance for a specific occurrence
+ * Build an ExpandedEventInstance representing a specific occurrence of a StoredEvent.
+ *
+ * Creates an instance object for the given occurrence times. For recurring events the
+ * `instanceId` is formed by appending the occurrence `instanceStart` ISO timestamp to the
+ * original event id (formatted as `{event.id}_{instanceStart.toISOString()}`).
+ *
+ * @param event - The source stored event
+ * @param instanceStart - The occurrence start timestamp
+ * @param instanceEnd - The occurrence end timestamp
+ * @returns An ExpandedEventInstance with `startAt`/`endAt` set to the provided timestamps,
+ *          `startDate`/`endDate` as `YYYY-MM-DD` strings derived from those timestamps,
+ *          `isRecurring` indicating whether the source event had an RRULE, and other
+ *          metadata copied from the source event
  */
 function eventToInstance(
     event: StoredEvent,

@@ -92,6 +92,11 @@ const AnimateIconContext = React.createContext<AnimateIconContextValue | null>(
   null,
 );
 
+/**
+ * Retrieve the current AnimateIcon context or a safe default when no provider is present.
+ *
+ * @returns The AnimateIconContextValue from the nearest provider, or a default object where `controls`, `loop`, `loopDelay`, `active`, `animate`, `initialOnAnimateEnd`, `completeOnStop`, `persistOnAnimateEnd`, and `delay` are `undefined` and `animation` is `"default"`.
+ */
 function useAnimateIconContext() {
   const context = React.useContext(AnimateIconContext);
   if (!context)
@@ -110,6 +115,13 @@ function useAnimateIconContext() {
   return context;
 }
 
+/**
+ * Creates an event handler that invokes two handlers in order.
+ *
+ * @param theirs - An optional external handler to call first
+ * @param ours - An optional internal handler to call after `theirs`
+ * @returns A composed event handler that calls `theirs` then `ours` with the same event
+ */
 function composeEventHandlers<E extends React.SyntheticEvent<unknown>>(
   theirs?: (event: E) => void,
   ours?: (event: E) => void,
@@ -123,6 +135,28 @@ function composeEventHandlers<E extends React.SyntheticEvent<unknown>>(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProps = Record<string, any>;
 
+/**
+ * Provides a container that orchestrates motion animations for its child content based on prop triggers and shared context.
+ *
+ * Controls when and which animation runs (programmatic `animate`, hover, tap, or when in view), handles optional start delays, looping with delays, and post-animation behavior, and exposes animation controls via context to nested icons.
+ *
+ * @param asChild - If true, renders children directly (as a Slot) instead of a wrapper element.
+ * @param animate - Boolean or animation key to start/stop or select a specific animation programmatically.
+ * @param animateOnHover - Boolean or animation key to start the animation while the element is hovered.
+ * @param animateOnTap - Boolean or animation key to start the animation while the element is pressed.
+ * @param animateOnView - If true, starts the animation when the element comes into view.
+ * @param animateOnViewMargin - Intersection margin used when observing in-view behavior.
+ * @param animateOnViewOnce - If true, only triggers in-view animations once.
+ * @param animation - Default animation key to use when `animate` is not a string.
+ * @param loop - If true, repeats the animation sequence continuously while active.
+ * @param loopDelay - Milliseconds to wait between loop iterations.
+ * @param initialOnAnimateEnd - If true, resets the animated variants to the `initial` state after each animate cycle.
+ * @param completeOnStop - If true, waits for the running animation to finish when stopping.
+ * @param persistOnAnimateEnd - If true, leaves the animated state as-is after an animate cycle completes.
+ * @param delay - Milliseconds to delay starting the animation after a trigger.
+ * @param children - The element(s) to render and control; can be an SVG or any React node.
+ * @returns A JSX element that wraps `children` and provides an AnimateIconContext with animation controls and state.
+ */
 function AnimateIcon({
   asChild = false,
   animate = false,
@@ -448,6 +482,13 @@ function AnimateIcon({
 const pathClassName =
   "[&_[stroke-dasharray='1px_1px']]:![stroke-dasharray:1px_0px]";
 
+/**
+ * Renders an icon component with optional animation behavior, respecting any surrounding AnimateIconContext and prop overrides.
+ *
+ * When an AnimateIconContext is present, context values are inherited unless animation-related props are explicitly overridden — in that case the icon is wrapped in an AnimateIcon configured with the provided overrides. If no overrides are present the wrapper provides a derived context to the icon. When no context exists but animation props are provided, the icon is wrapped in an AnimateIcon. If neither context nor animation props are present, the icon is rendered directly.
+ *
+ * @returns A JSX element that renders the icon, optionally wrapped to enable or inherit animation behavior
+ */
 function IconWrapper<T extends string>({
   size = 28,
   animation: animationProp,
@@ -614,6 +655,17 @@ function IconWrapper<T extends string>({
   );
 }
 
+/**
+ * Selects and returns the appropriate variant map for the current animation mode.
+ *
+ * When the current animation mode is one of the predefined static animations, returns a variant map
+ * where each key from `animations.default` is mapped to the corresponding static variant (omitting
+ * keys that include "group" for `path` and `path-loop`). Otherwise, returns the entry from
+ * `animations` matching the current mode, falling back to `animations.default` if missing.
+ *
+ * @param animations - A mapping of animation mode keys to variant maps, with a required `default` entry
+ * @returns The concrete variant map to use for the active animation mode
+ */
 function getVariants<
   V extends { default: T; [key: string]: T },
   T extends Record<string, Variants>,

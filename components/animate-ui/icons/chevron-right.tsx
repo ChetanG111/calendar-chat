@@ -38,6 +38,12 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
+/**
+ * Render a chevron-right SVG icon whose path animates according to the shared icon animation controls.
+ *
+ * @param size - Width and height applied to the SVG root
+ * @returns An SVG element representing a chevron-right icon with its path animated by the shared animation variants and controls
+ */
 function IconComponent({ size, ...props }: ChevronRightProps) {
   const { controls } = useAnimateIconContext();
   const variants = getVariants(animations);
@@ -65,6 +71,11 @@ function IconComponent({ size, ...props }: ChevronRightProps) {
   );
 }
 
+/**
+ * Renders a chevron-right icon component wired into the shared IconWrapper for consistent styling and animation controls.
+ *
+ * @returns The rendered chevron-right icon element.
+ */
 function ChevronRight(props: ChevronRightProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }

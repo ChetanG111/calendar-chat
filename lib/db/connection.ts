@@ -54,9 +54,12 @@ export function getDatabase(): Database.Database {
 }
 
 /**
- * Initialize the database schema
- * 
- * Runs all schema statements. These are idempotent (use IF NOT EXISTS).
+ * Ensures the database schema is present and applies lightweight, idempotent auto-migrations.
+ *
+ * Executes the module's schema statements and attempts to add `start_date` and `end_date`
+ * columns to the `events` table if they are missing; existing schema elements are left unchanged.
+ *
+ * @param database - An open Better-SQLite3 database connection to apply schema changes to
  */
 function initializeSchema(database: Database.Database): void {
     console.log('[DB] Initializing schema...');

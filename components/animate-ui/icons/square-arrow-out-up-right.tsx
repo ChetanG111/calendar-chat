@@ -48,6 +48,12 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
+/**
+ * Renders the animated "square arrow out up right" SVG icon whose motion is driven by the shared animation context.
+ *
+ * @param size - The rendered icon's width and height in pixels.
+ * @returns The SVG element for the icon with motion variants bound to animation controls.
+ */
 function IconComponent({ size, ...props }: SquareArrowOutUpRightProps) {
   const { controls } = useAnimateIconContext();
   const variants = getVariants(animations);
@@ -89,6 +95,12 @@ function IconComponent({ size, ...props }: SquareArrowOutUpRightProps) {
   );
 }
 
+/**
+ * Renders the SquareArrowOutUpRight icon wrapped with the shared IconWrapper.
+ *
+ * @param props - Icon configuration and HTML attributes (size, animation variant, and other IconProps)
+ * @returns The JSX element for the wrapped icon
+ */
 function SquareArrowOutUpRight(props: SquareArrowOutUpRightProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }

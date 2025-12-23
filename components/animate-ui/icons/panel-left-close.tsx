@@ -35,6 +35,13 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
+/**
+ * Renders the panel-left close SVG icon with animated sub-elements.
+ *
+ * @param size - The width and height of the rendered square icon in pixels.
+ * @param props - Additional SVG and icon props spread onto the root `<svg>` element.
+ * @returns An SVG element with motion variants applied to the rectangle, divider line, and arrow path.
+ */
 function IconComponent({ size, ...props }: PanelLeftCloseProps) {
   const { controls } = useAnimateIconContext();
   const variants = getVariants(animations);
@@ -82,6 +89,12 @@ function IconComponent({ size, ...props }: PanelLeftCloseProps) {
   );
 }
 
+/**
+ * Render the PanelLeftClose icon and forward props to the IconWrapper and icon component.
+ *
+ * @param props - Properties passed through to IconWrapper and the rendered icon.
+ * @returns A React element displaying the PanelLeftClose icon.
+ */
 function PanelLeftClose(props: PanelLeftCloseProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }

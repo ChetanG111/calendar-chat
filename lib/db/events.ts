@@ -23,8 +23,9 @@ import type {
 const queryCache = new Map<string, ExpandedEventInstance[]>();
 
 /**
- * Clear the entire query cache
- * Call this on any DB write operation
+ * Invalidate and clear the in-memory cache of expanded event instances.
+ *
+ * Call after any database write (create, update, delete) so subsequent range queries return fresh data.
  */
 function invalidateCache() {
     queryCache.clear();
@@ -39,15 +40,22 @@ function generateEventId(): string {
 }
 
 /**
- * Convert a Date to UTC ISO 8601 string
+ * Converts a Date to a UTC ISO 8601 string.
+ *
+ * @returns The date formatted as an ISO 8601 string in UTC (ending with `Z`).
  */
 function toUtcString(date: Date): string {
     return date.toISOString();
 }
 
 /**
- * Format a Date object to a YYYY-MM-DD string in a specific timezone.
- * Uses 'en-CA' locale (ISO 8601 format) to ensure YYYY-MM-DD.
+ * Formats a Date to a YYYY-MM-DD string for a given IANA timezone.
+ *
+ * If the provided timezone is invalid, the function logs a warning and falls back to UTC.
+ *
+ * @param date - The Date to format.
+ * @param timezone - The IANA timezone name to use (e.g., "America/New_York"); falls back to "UTC" when invalid.
+ * @returns The date formatted as `YYYY-MM-DD` in the specified timezone.
  */
 function toTimezoneDateString(date: Date, timezone: string): string {
     try {
@@ -59,7 +67,12 @@ function toTimezoneDateString(date: Date, timezone: string): string {
 }
 
 /**
- * Convert a DbEvent row to a StoredEvent
+ * Map a database event row into a StoredEvent object.
+ *
+ * Parses JSON-encoded `exdates` and `metadata` when present (parsing failures log a warning and result in an empty array or object). Uses the stored `timezone` or `'UTC'` if missing, derives `startDate` and `endDate` using that timezone, converts timestamp fields to Date objects, and maps `is_all_day` (`1` means `true`) to `isAllDay`.
+ *
+ * @param row - The database row representing an event
+ * @returns A StoredEvent with parsed `exdates` and `metadata`, `startAt`/`endAt`/`createdAt`/`updatedAt` as Date objects, `startDate`/`endDate` formatted for the event timezone, and `isAllDay` normalized
  */
 function dbEventToStoredEvent(row: DbEvent): StoredEvent {
     let exdates: string[] = [];
@@ -104,10 +117,14 @@ function dbEventToStoredEvent(row: DbEvent): StoredEvent {
 }
 
 /**
- * Create a new event
- * 
- * @param input - Event creation input
- * @returns The created event
+ * Creates a new event in the database and returns the persisted record.
+ *
+ * This will generate an `id` if one is not provided, set creation and update
+ * timestamps to the current UTC time, serialize `exdates` and `metadata` to JSON
+ * when present, and invalidate the in-memory expanded-events query cache.
+ *
+ * @param input - Event creation input; if `input.id` is omitted a new id is generated.
+ * @returns The newly created StoredEvent including generated `id`, `startDate`/`endDate` derived for the event timezone, and timestamps.
  */
 export function createEvent(input: CreateEventInput): StoredEvent {
     const db = getDatabase();
@@ -268,15 +285,13 @@ export function deleteEvent(id: string): boolean {
 }
 
 /**
- * Query events within a time range
- * 
- * This function:
- * 1. Fetches all events that might overlap the range (including recurring)
- * 2. Expands recurring events into instances
- * 3. Returns all matching instances sorted by start time
- * 
- * @param options - Query options including range and expansion settings
- * @returns Array of expanded event instances
+ * Retrieve event instances overlapping a time range, optionally expanding recurring events into individual instances.
+ *
+ * @param options - Query options containing:
+ *   - rangeStart: start of the query range (inclusive)
+ *   - rangeEnd: end of the query range (exclusive)
+ *   - expandRecurrence: when true (default), expand recurring events into their matching instances; when false, return raw event records with an `isRecurring` flag
+ * @returns An array of ExpandedEventInstance objects representing all matching instances within the specified range, sorted by instance start time
  */
 export function queryEventsInRange(options: EventQueryOptions): ExpandedEventInstance[] {
     const { rangeStart, rangeEnd, expandRecurrence = true } = options;

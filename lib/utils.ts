@@ -2,14 +2,25 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { CalendarEvent } from "@/types"
 
+/**
+ * Combine class name inputs and resolve Tailwind class conflicts into a single string.
+ *
+ * @param inputs - Class values (strings, arrays, objects, etc.) to merge
+ * @returns The merged class string with Tailwind classes deduplicated and conflicts resolved
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 /**
- * Arranges events that may overlap in time by calculating 
- * horizontal positioning (left offset and width) so they 
- * display side-by-side in a calendar view.
+ * Compute horizontal positions for calendar events so overlapping events render side-by-side.
+ *
+ * Events are assigned to columns and may span adjacent empty columns; each returned entry pairs
+ * the original event with a style containing `left` and `width` as percentage strings suitable
+ * for inline CSS positioning.
+ *
+ * @param events - Array of calendar events to layout (each event must have `id`, `start`, and `end`)
+ * @returns An array where each item contains the original `event` and a `style` object with `left` and `width` (e.g., `"25%"`) representing the event's horizontal offset and width
  */
 export function arrangeEvents(events: CalendarEvent[]): Array<{ event: CalendarEvent; style: { left: string; width: string } }> {
   if (events.length === 0) return [];

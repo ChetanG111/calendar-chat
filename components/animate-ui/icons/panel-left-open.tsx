@@ -35,6 +35,14 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
+/**
+ * Renders the PanelLeftOpen animated icon as a motion-enabled SVG.
+ *
+ * The icon contains three animated parts (panel rect, divider line, and arrow) whose variants are driven by the shared animation context.
+ *
+ * @param size - Width and height of the SVG icon (typically a number of pixels or a CSS size string)
+ * @returns A React element (motion.svg) for the animated PanelLeftOpen icon
+ */
 function IconComponent({ size, ...props }: PanelLeftOpenProps) {
   const { controls } = useAnimateIconContext();
   const variants = getVariants(animations);
@@ -82,6 +90,12 @@ function IconComponent({ size, ...props }: PanelLeftOpenProps) {
   );
 }
 
+/**
+ * Icon component that renders the animated "PanelLeftOpen" SVG inside IconWrapper.
+ *
+ * @param props - Props to configure the icon's size and animation variant.
+ * @returns The IconWrapper element rendering the PanelLeftOpen icon
+ */
 function PanelLeftOpen(props: PanelLeftOpenProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }

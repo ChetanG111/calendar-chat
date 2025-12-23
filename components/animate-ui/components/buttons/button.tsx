@@ -45,6 +45,15 @@ const buttonVariants = cva(
 
 type ButtonProps = ButtonPrimitiveProps & VariantProps<typeof buttonVariants>;
 
+/**
+ * Render a button element styled by the `buttonVariants` system and forwards remaining props to the underlying primitive.
+ *
+ * @param className - Additional class names to merge with the computed variant classes
+ * @param variant - Visual style variant to apply (e.g., "default", "accent", "destructive", "outline", "secondary", "ghost", "link")
+ * @param size - Size preset to apply (e.g., "default", "sm", "lg", "icon", "icon-sm", "icon-lg")
+ * @param props - Additional props forwarded to the underlying ButtonPrimitive
+ * @returns The rendered button element
+ */
 function Button({ className, variant, size, ...props }: ButtonProps) {
   return (
     <ButtonPrimitive

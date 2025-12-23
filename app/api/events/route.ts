@@ -17,13 +17,11 @@ import type { CreateEventInput, EventMetadata } from '@/lib/db';
 const DEFAULT_TIMEZONE = 'Asia/Kolkata';
 
 /**
- * GET /api/events
- * 
- * Query parameters:
- * - rangeStart: ISO date string (optional)
- * - rangeEnd: ISO date string (optional)
- * 
- * If no range is provided, returns events for the current month.
+ * List events within a date range; defaults to events for the current month when no range is provided.
+ *
+ * Accepts query parameters `rangeStart` and `rangeEnd` as ISO date strings to restrict the range.
+ *
+ * @returns An object with an `events` array of frontend-formatted event objects (fields include `id`, `eventId`, `title`, `start`, `end`, optional `startDate`, optional `endDate`, `type`, optional `description`, optional `location`, optional `guests`, optional `meetLink`, `isAllDay`, `isRecurring`, optional `rrule`, and `timezone`).
  */
 export async function GET(request: NextRequest) {
     try {
@@ -81,18 +79,18 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/events
- * 
- * Request body:
- * - title: string (required)
- * - start: ISO date string (required)
- * - end: ISO date string (required)
- * - type: 'business' | 'personal' | 'meetings' | 'holiday' | 'default'
- * - description: string (optional)
- * - location: string (optional)
- * - isAllDay: boolean (optional)
- * - rrule: string (optional) - RFC 5545 RRULE
- * - timezone: string (optional) - IANA timezone
+ * Handle POST /api/events requests to create a new calendar event.
+ *
+ * Accepts a JSON body with the following fields:
+ * - title (required), start (required, ISO string), end (required, ISO string)
+ * - startDate?, endDate? (optional date-only strings)
+ * - type? — 'business' | 'personal' | 'meetings' | 'holiday' | 'default' (defaults to 'default')
+ * - description?, location?, isAllDay?, rrule? (RFC 5545), timezone? (IANA), guests? (string[]), meetLink?
+ *
+ * The handler validates required fields, constructs event metadata, persists the event,
+ * and returns a frontend-facing event representation.
+ *
+ * @returns On success returns a JSON object { event: { id, eventId, title, start, end, startDate?, endDate?, type, description?, location?, guests?, meetLink?, isAllDay, isRecurring, rrule?, timezone } } with HTTP status 201. Returns 400 with `{ error: string }` when required fields are missing, and 500 with `{ error: string }` on server error.
  */
 export async function POST(request: NextRequest) {
     try {

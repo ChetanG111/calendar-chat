@@ -38,6 +38,12 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
+/**
+ * Renders the chevron-left SVG icon with its path animated according to the active animation variant.
+ *
+ * @param size - The width and height of the SVG in pixels
+ * @returns An SVG element containing an animated chevron path whose motion follows the selected animation variant
+ */
 function IconComponent({ size, ...props }: ChevronLeftProps) {
   const { controls } = useAnimateIconContext();
   const variants = getVariants(animations);
@@ -65,6 +71,12 @@ function IconComponent({ size, ...props }: ChevronLeftProps) {
   );
 }
 
+/**
+ * Render a ChevronLeft icon using IconWrapper.
+ *
+ * @param props - Props to configure the icon (size, animation variant, and other icon options)
+ * @returns The rendered chevron-left icon element
+ */
 function ChevronLeft(props: ChevronLeftProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }
