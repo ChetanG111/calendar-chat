@@ -13,6 +13,8 @@ import {
     editModeVariants
 } from './event-panel/animations';
 
+export type { EventPanelMode } from './event-panel/types';
+
 const EventPanel: React.FC<EventPanelProps> = ({
     isOpen,
     mode,
