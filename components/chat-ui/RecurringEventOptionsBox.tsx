@@ -17,6 +17,7 @@ export interface RecurringEventOptionsBoxProps {
     calendars?: CalendarCategory[];
     onAnswer: (option: RecurringOption) => void;
     actionType?: 'edit' | 'delete';
+    disabled?: boolean;
 }
 
 export function RecurringEventOptionsBox({
@@ -25,6 +26,7 @@ export function RecurringEventOptionsBox({
     calendars = [],
     onAnswer,
     actionType = 'delete',
+    disabled = false,
 }: RecurringEventOptionsBoxProps) {
     const formatTime = (date: Date) => {
         return new Date(date).toLocaleTimeString('en-US', {
@@ -101,46 +103,73 @@ export function RecurringEventOptionsBox({
             {/* Options list */}
             <div className="flex flex-col gap-2">
                 <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => onAnswer('single')}
-                    className="group flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border hover:bg-muted hover:border-border/80 transition-all text-left"
+                    whileHover={disabled ? {} : { scale: 1.01 }}
+                    whileTap={disabled ? {} : { scale: 0.99 }}
+                    onClick={() => !disabled && onAnswer('single')}
+                    disabled={disabled}
+                    className={clsx(
+                        "group flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
+                        disabled
+                            ? "bg-muted/10 border-border/50 opacity-50 cursor-not-allowed"
+                            : "bg-muted/30 border-border hover:bg-muted hover:border-border/80"
+                    )}
                 >
-                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500/20 transition-colors">
+                    <div className={clsx(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                        disabled ? "bg-zinc-500/10 text-zinc-500" : "bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20"
+                    )}>
                         <span className="material-symbols-outlined">event</span>
                     </div>
                     <div>
-                        <div className="font-medium text-foreground">Just this occurrence</div>
+                        <div className={clsx("font-medium", disabled ? "text-muted-foreground" : "text-foreground")}>Just this occurrence</div>
                         <div className="text-xs text-muted-foreground">This event only (single occurrence)</div>
                     </div>
                 </motion.button>
 
                 <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => onAnswer('future')}
-                    className="group flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border hover:bg-muted hover:border-border/80 transition-all text-left"
+                    whileHover={disabled ? {} : { scale: 1.01 }}
+                    whileTap={disabled ? {} : { scale: 0.99 }}
+                    onClick={() => !disabled && onAnswer('future')}
+                    disabled={disabled}
+                    className={clsx(
+                        "group flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
+                        disabled
+                            ? "bg-muted/10 border-border/50 opacity-50 cursor-not-allowed"
+                            : "bg-muted/30 border-border hover:bg-muted hover:border-border/80"
+                    )}
                 >
-                    <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500 group-hover:bg-orange-500/20 transition-colors">
+                    <div className={clsx(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                        disabled ? "bg-zinc-500/10 text-zinc-500" : "bg-orange-500/10 text-orange-500 group-hover:bg-orange-500/20"
+                    )}>
                         <span className="material-symbols-outlined">update</span>
                     </div>
                     <div>
-                        <div className="font-medium text-foreground">This & Future ones</div>
+                        <div className={clsx("font-medium", disabled ? "text-muted-foreground" : "text-foreground")}>This & Future ones</div>
                         <div className="text-xs text-muted-foreground">This and future events (from this date onward)</div>
                     </div>
                 </motion.button>
 
                 <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => onAnswer('all')}
-                    className="group flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border hover:bg-muted hover:border-border/80 transition-all text-left"
+                    whileHover={disabled ? {} : { scale: 1.01 }}
+                    whileTap={disabled ? {} : { scale: 0.99 }}
+                    onClick={() => !disabled && onAnswer('all')}
+                    disabled={disabled}
+                    className={clsx(
+                        "group flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
+                        disabled
+                            ? "bg-muted/10 border-border/50 opacity-50 cursor-not-allowed"
+                            : "bg-muted/30 border-border hover:bg-muted hover:border-border/80"
+                    )}
                 >
-                    <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500/20 transition-colors">
+                    <div className={clsx(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                        disabled ? "bg-zinc-500/10 text-zinc-500" : "bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/20"
+                    )}>
                         <span className="material-symbols-outlined">event_repeat</span>
                     </div>
                     <div>
-                        <div className="font-medium text-foreground">The entire series</div>
+                        <div className={clsx("font-medium", disabled ? "text-muted-foreground" : "text-foreground")}>The entire series</div>
                         <div className="text-xs text-muted-foreground">All events in the series (entire recurrence)</div>
                     </div>
                 </motion.button>

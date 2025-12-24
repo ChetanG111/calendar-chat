@@ -167,6 +167,7 @@ interface ChatMessage {
     event: CalendarEvent;
     actionType: 'edit' | 'delete';
   };
+  isAnswered?: boolean;
 }
 
 interface ChatViewProps {
@@ -340,6 +341,7 @@ function AssistantMessage({
               question={message.quiz.question}
               onAnswer={(answer) => onQuizAnswer?.(message.id, answer)}
               onFocusInput={onFocusInput || (() => { })}
+              disabled={message.isAnswered}
             />
           )}
 
@@ -349,6 +351,7 @@ function AssistantMessage({
               messageId={message.id}
               question={message.yesno.question}
               onAnswer={(answer) => onYesNoAnswer?.(message.id, answer)}
+              disabled={message.isAnswered}
             />
           )}
 
@@ -359,6 +362,7 @@ function AssistantMessage({
               event={message.deleteEvent.event}
               calendars={calendars}
               onAnswer={(answer) => onDeleteEventAnswer?.(message.id, message.deleteEvent!.event, answer)}
+              disabled={message.isAnswered}
             />
           )}
 
@@ -370,6 +374,7 @@ function AssistantMessage({
               actionType={message.recurringOptions.actionType}
               calendars={calendars}
               onAnswer={(option) => onRecurringAnswer?.(message.id, message.recurringOptions!.event, option)}
+              disabled={message.isAnswered}
             />
           )}
 
@@ -467,28 +472,34 @@ const ChatView: React.FC<ChatViewProps> = ({
         : 'No';
 
     if (responseText) {
-      setMessages(prev => [...prev, {
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m).concat([{
         id: crypto.randomUUID(),
         role: 'user',
         content: responseText,
         timestamp: new Date(),
-      }]);
+      }]));
+    } else {
+      // If it was 'custom', we still mark as answered to disable buttons
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m));
     }
   }, []);
 
   // Handle yes/no answer
   const handleYesNoAnswer = useCallback((messageId: string, answer: 'yes' | 'no') => {
     const responseText = answer === 'yes' ? 'Yes' : 'No';
-    setMessages(prev => [...prev, {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m).concat([{
       id: crypto.randomUUID(),
       role: 'user',
       content: responseText,
       timestamp: new Date(),
-    }]);
+    }]));
   }, []);
 
   // Handle delete event answer
   const handleDeleteEventAnswer = useCallback((messageId: string, event: CalendarEvent, answer: 'delete' | 'cancel') => {
+    // Mark the message as answered
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m));
+
     if (answer === 'delete') {
       // Call the parent delete handler if provided
       onEventDeleted?.(event);
@@ -516,12 +527,13 @@ const ChatView: React.FC<ChatViewProps> = ({
       all: '**The entire series**'
     };
 
-    setMessages(prev => [...prev, {
+    // Mark the message as answered
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m).concat([{
       id: crypto.randomUUID(),
       role: 'user',
       content: labels[option],
       timestamp: new Date(),
-    }]);
+    }]));
 
     setTimeout(() => {
       setMessages(prev => [...prev, {
@@ -692,7 +704,7 @@ const ChatView: React.FC<ChatViewProps> = ({
           description: 'Recurring weekly sync.',
           location: 'Virtual Room',
           isAllDay: false,
-          recurrence: 'weekly',
+          rrule: 'FREQ=WEEKLY',
         };
 
         setTimeout(() => {

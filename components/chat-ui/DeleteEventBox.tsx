@@ -14,6 +14,7 @@ export interface DeleteEventBoxProps {
     event: CalendarEvent;
     calendars?: CalendarCategory[];
     onAnswer: (answer: 'delete' | 'cancel') => void;
+    disabled?: boolean;
 }
 
 export function DeleteEventBox({
@@ -21,6 +22,7 @@ export function DeleteEventBox({
     event,
     calendars = [],
     onAnswer,
+    disabled = false,
 }: DeleteEventBoxProps) {
     const formatTime = (date: Date) => {
         return new Date(date).toLocaleTimeString('en-US', {
@@ -102,19 +104,31 @@ export function DeleteEventBox({
             {/* Action buttons */}
             <div className="flex gap-2">
                 <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onAnswer('delete')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-400 font-medium hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2"
+                    whileHover={disabled ? {} : { scale: 1.02 }}
+                    whileTap={disabled ? {} : { scale: 0.98 }}
+                    onClick={() => !disabled && onAnswer('delete')}
+                    disabled={disabled}
+                    className={clsx(
+                        "flex-1 py-2.5 px-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2",
+                        disabled
+                            ? "bg-muted border border-border text-muted-foreground cursor-not-allowed opacity-50"
+                            : "bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30"
+                    )}
                 >
                     <span className="material-symbols-outlined text-lg">delete</span>
                     Delete
                 </motion.button>
                 <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onAnswer('cancel')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-muted border border-border text-foreground font-medium hover:bg-accent transition-colors"
+                    whileHover={disabled ? {} : { scale: 1.02 }}
+                    whileTap={disabled ? {} : { scale: 0.98 }}
+                    onClick={() => !disabled && onAnswer('cancel')}
+                    disabled={disabled}
+                    className={clsx(
+                        "flex-1 py-2.5 px-4 rounded-xl font-medium transition-all",
+                        disabled
+                            ? "bg-muted/50 border border-border text-muted-foreground cursor-not-allowed opacity-50"
+                            : "bg-muted border border-border text-foreground hover:bg-accent"
+                    )}
                 >
                     Cancel
                 </motion.button>

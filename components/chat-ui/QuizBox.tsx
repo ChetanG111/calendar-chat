@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { clsx } from 'clsx';
 
 // ============================================================================
 // Quiz Box Component
@@ -12,6 +13,7 @@ export interface QuizBoxProps {
     question: string;
     onAnswer: (answer: 'yes' | 'no' | 'custom') => void;
     onFocusInput: () => void;
+    disabled?: boolean;
 }
 
 export function QuizBox({
@@ -19,9 +21,11 @@ export function QuizBox({
     question,
     onAnswer,
     onFocusInput,
+    disabled = false,
 }: QuizBoxProps) {
 
     const handleCustomClick = () => {
+        if (disabled) return;
         onAnswer('custom');
         onFocusInput();
     };
@@ -48,26 +52,44 @@ export function QuizBox({
             {/* Answer buttons */}
             <div className="flex gap-2">
                 <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onAnswer('yes')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-green-500/20 border border-green-500/50 text-green-400 font-medium hover:bg-green-500/30 transition-colors"
+                    whileHover={disabled ? {} : { scale: 1.02 }}
+                    whileTap={disabled ? {} : { scale: 0.98 }}
+                    onClick={() => !disabled && onAnswer('yes')}
+                    disabled={disabled}
+                    className={clsx(
+                        "flex-1 py-2.5 px-4 rounded-xl font-medium transition-all",
+                        disabled
+                            ? "bg-muted border border-border text-muted-foreground cursor-not-allowed opacity-50"
+                            : "bg-green-500/20 border border-green-500/50 text-green-400 hover:bg-green-500/30"
+                    )}
                 >
                     Yes
                 </motion.button>
                 <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onAnswer('no')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-400 font-medium hover:bg-red-500/30 transition-colors"
+                    whileHover={disabled ? {} : { scale: 1.02 }}
+                    whileTap={disabled ? {} : { scale: 0.98 }}
+                    onClick={() => !disabled && onAnswer('no')}
+                    disabled={disabled}
+                    className={clsx(
+                        "flex-1 py-2.5 px-4 rounded-xl font-medium transition-all",
+                        disabled
+                            ? "bg-muted border border-border text-muted-foreground cursor-not-allowed opacity-50"
+                            : "bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30"
+                    )}
                 >
                     No
                 </motion.button>
                 <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={disabled ? {} : { scale: 1.02 }}
+                    whileTap={disabled ? {} : { scale: 0.98 }}
                     onClick={handleCustomClick}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-muted border border-border text-foreground font-medium hover:bg-accent transition-colors"
+                    disabled={disabled}
+                    className={clsx(
+                        "flex-1 py-2.5 px-4 rounded-xl font-medium transition-all",
+                        disabled
+                            ? "bg-muted/50 border border-border text-muted-foreground cursor-not-allowed opacity-50"
+                            : "bg-muted border border-border text-foreground hover:bg-accent"
+                    )}
                 >
                     Custom
                 </motion.button>
