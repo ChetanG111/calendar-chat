@@ -18,6 +18,10 @@ import { Button } from '@/components/animate-ui/components/buttons/button';
 import { useCalendar } from '@/components/providers/CalendarContext';
 
 const getViewKey = (view: ViewType, date: Date) => {
+    // Chat view should have a stable key - it shouldn't remount when date changes
+    if (view === 'chat') {
+        return 'chat';
+    }
     if (view === 'month') {
         return `${view}-${date.getFullYear()}-${date.getMonth()}`;
     }
@@ -76,6 +80,9 @@ export default function Home() {
     const [panelMode, setPanelMode] = useState<EventPanelMode>('view');
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(undefined);
     const [initialEventData, setInitialEventData] = useState<Partial<CalendarEvent> | undefined>(undefined);
+
+    // Chat attached event state - when user clicks "talk about event" in EventPanel
+    const [attachedEventForChat, setAttachedEventForChat] = useState<CalendarEvent | null>(null);
 
     // Filter events based on visible calendars
     const visibleEventTypes = calendars.filter(c => c.checked).map(c => c.id);
@@ -163,6 +170,9 @@ export default function Home() {
                         onEventUpdated={() => refreshEvents()}
                         onEventDeleted={() => refreshEvents()}
                         calendars={calendars}
+                        attachedEvent={attachedEventForChat}
+                        onClearAttachedEvent={() => setAttachedEventForChat(null)}
+                        onAttachEvent={setAttachedEventForChat}
                     />
                 );
                 break;
@@ -280,7 +290,7 @@ export default function Home() {
     const handleDeleteEvent = async () => {
         if (selectedEvent) {
             const eventId = selectedEvent.eventId || selectedEvent.id;
-            
+
             // Optimistic UI update handled by context? No, wait for context.
             // Actually, we can just call delete and let context refresh.
             handleClosePanel();
@@ -329,6 +339,11 @@ export default function Home() {
                 onEdit={() => setPanelMode('edit')}
                 onDelete={handleDeleteEvent}
                 onSave={handleSaveEvent}
+                onChatAboutEvent={(event) => {
+                    setAttachedEventForChat(event);
+                    handleClosePanel();
+                    setCurrentView('chat');
+                }}
                 calendars={calendars}
             />
 

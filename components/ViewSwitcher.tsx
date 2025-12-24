@@ -13,10 +13,10 @@ interface ViewSwitcherProps {
 
 export default function ViewSwitcher({ currentView, onChange }: ViewSwitcherProps) {
     const items = [
+        { id: "chat", label: "Chat" },
         { id: "day", label: "Day" },
         { id: "week", label: "Week" },
         { id: "month", label: "Month" },
-        { id: "chat", label: "Chat" },
     ] as const;
 
     return (

@@ -5,6 +5,7 @@ import { ViewType, CalendarEvent } from '@/types';
 import { clsx } from "clsx";
 import { Send } from '@/components/animate-ui/icons/send';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { QuizBox, YesNoBox, EventCard, DeleteEventBox, EventAttachmentChip } from '@/components/chat-ui';
 
 // ============================================================================
 // Animation Variants - Premium Springy Physics
@@ -153,6 +154,15 @@ interface ChatMessage {
   intent?: string;
   event?: CalendarEvent;
   events?: CalendarEvent[];
+  quiz?: {
+    question: string;
+  };
+  yesno?: {
+    question: string;
+  };
+  deleteEvent?: {
+    event: CalendarEvent;
+  };
 }
 
 interface ChatViewProps {
@@ -163,6 +173,9 @@ interface ChatViewProps {
   onEventUpdated?: (event: CalendarEvent) => void;
   onEventDeleted?: (event: CalendarEvent) => void;
   calendars?: import('@/types').CalendarCategory[];
+  attachedEvent?: CalendarEvent | null;
+  onClearAttachedEvent?: () => void;
+  onAttachEvent?: (event: CalendarEvent) => void;
 }
 
 
@@ -171,7 +184,17 @@ interface ChatViewProps {
 // Message Components
 // ============================================================================
 
-function UserMessage({ content }: { content: string }) {
+function UserMessage({
+  content,
+  event,
+  calendars = [],
+  onNavigateToEvent
+}: {
+  content: string;
+  event?: CalendarEvent;
+  calendars?: import('@/types').CalendarCategory[];
+  onNavigateToEvent?: (date: Date) => void;
+}) {
   return (
     <motion.div
       className="flex justify-end"
@@ -184,6 +207,21 @@ function UserMessage({ content }: { content: string }) {
         variants={bubbleContentVariants}
         className="bg-card text-foreground px-5 py-3 rounded-2xl rounded-tr-sm max-w-[80%] border border-border overflow-hidden"
       >
+        {/* Show attached event if present */}
+        {event && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-2"
+          >
+            <EventCard
+              event={event}
+              compact
+              calendars={calendars}
+              onNavigateToEvent={onNavigateToEvent}
+            />
+          </motion.div>
+        )}
         <motion.span variants={textContentVariants} className="inline-block">
           {content}
         </motion.span>
@@ -201,11 +239,21 @@ function UserMessage({ content }: { content: string }) {
 function AssistantMessage({
   message,
   onNavigateToEvent,
-  calendars = []
+  calendars = [],
+  onQuizAnswer,
+  onYesNoAnswer,
+  onDeleteEventAnswer,
+  onFocusInput,
+  onAttachToChat,
 }: {
   message: ChatMessage;
   onNavigateToEvent?: (date: Date) => void;
   calendars?: import('@/types').CalendarCategory[];
+  onQuizAnswer?: (messageId: string, answer: 'yes' | 'no' | 'custom') => void;
+  onYesNoAnswer?: (messageId: string, answer: 'yes' | 'no') => void;
+  onDeleteEventAnswer?: (messageId: string, event: CalendarEvent, answer: 'delete' | 'cancel') => void;
+  onFocusInput?: () => void;
+  onAttachToChat?: (event: CalendarEvent) => void;
 }) {
   const isSuccess = message.content.startsWith('✅');
   const isError = message.content.startsWith('❌');
@@ -230,25 +278,57 @@ function AssistantMessage({
         className="space-y-3 w-full max-w-[85%]"
       >
         <>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 25,
-            }}
-            className={clsx(
-              "text-foreground whitespace-pre-wrap",
-              isSuccess && "text-green-500",
-              isError && "text-red-500"
-            )}
-          >
-            {message.content}
-          </motion.div>
+          {/* Only show text content if there's no quiz */}
+          {!message.quiz && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 25,
+              }}
+              className={clsx(
+                "text-foreground whitespace-pre-wrap",
+                isSuccess && "text-green-500",
+                isError && "text-red-500"
+              )}
+            >
+              {message.content}
+            </motion.div>
+          )}
+
+          {/* Show Quiz Box if present */}
+          {message.quiz && (
+            <QuizBox
+              messageId={message.id}
+              question={message.quiz.question}
+              onAnswer={(answer) => onQuizAnswer?.(message.id, answer)}
+              onFocusInput={onFocusInput || (() => { })}
+            />
+          )}
+
+          {/* Show Yes/No Box if present */}
+          {message.yesno && (
+            <YesNoBox
+              messageId={message.id}
+              question={message.yesno.question}
+              onAnswer={(answer) => onYesNoAnswer?.(message.id, answer)}
+            />
+          )}
+
+          {/* Show Delete Event Box if present */}
+          {message.deleteEvent && (
+            <DeleteEventBox
+              messageId={message.id}
+              event={message.deleteEvent.event}
+              calendars={calendars}
+              onAnswer={(answer) => onDeleteEventAnswer?.(message.id, message.deleteEvent!.event, answer)}
+            />
+          )}
 
           {/* Show event card if one was created/updated */}
-          {message.event && (
+          {message.event && !message.deleteEvent && (
             <motion.div
               variants={eventCardVariants}
               initial="initial"
@@ -258,14 +338,16 @@ function AssistantMessage({
               <EventCard
                 event={message.event}
                 intent={message.intent}
+                compact
                 onNavigateToEvent={onNavigateToEvent}
+                onAttachToChat={onAttachToChat}
                 calendars={calendars}
               />
             </motion.div>
           )}
 
-          {/* Show list of events if query result */}
-          {message.events && message.events.length > 0 && message.intent === 'queried' && (
+          {/* Show list of events if present */}
+          {message.events && message.events.length > 0 && (
             <div className="space-y-2 mt-2">
               {message.events.map((event, index) => (
                 <motion.div
@@ -280,6 +362,7 @@ function AssistantMessage({
                     event={event}
                     compact
                     onNavigateToEvent={onNavigateToEvent}
+                    onAttachToChat={onAttachToChat}
                     calendars={calendars}
                   />
                 </motion.div>
@@ -292,87 +375,10 @@ function AssistantMessage({
   );
 }
 
-function EventCard({ event, intent, compact, onNavigateToEvent, calendars = [] }: {
-  event: CalendarEvent;
-  intent?: string;
-  compact?: boolean;
-  onNavigateToEvent?: (date: Date) => void;
-  calendars?: import('@/types').CalendarCategory[];
-}) {
-  const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  // Look up calendar theme
-  const calendar = calendars.find(c => c.id === event.type) || calendars.find(c => c.isDefault) || calendars[0];
-  const theme = calendar?.theme;
-
-  const typeBorderColor = theme?.border || 'border-gray-500';
-  const typeBgColor = compact ? 'bg-card/50' : (theme?.bg || 'bg-muted/50');
-  const typeHoverBgColor = theme?.hover || 'hover:bg-muted/80';
-
-  return (
-    <div
-      onClick={() => onNavigateToEvent?.(new Date(event.start))}
-      className={clsx(
-        "rounded-lg border-l-4 p-3 transition-colors cursor-pointer group",
-        typeBorderColor,
-        typeBgColor,
-        typeHoverBgColor
-      )}
-      role="button"
-      tabIndex={0}
-      title="View in calendar"
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <h4 className="font-medium text-foreground group-hover:underline decoration-foreground/30 underline-offset-4">{event.title}</h4>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {event.isAllDay ? (
-              event.startDate && event.endDate && event.startDate !== event.endDate ? (
-                `${formatDate(event.start)} - ${formatDate(event.end)}`
-              ) : (
-                formatDate(event.start)
-              )
-            ) : (
-              event.startDate && event.endDate && event.startDate !== event.endDate ? (
-                `${formatTime(event.start)}, ${formatDate(event.start)} - ${formatTime(event.end)}, ${formatDate(event.end)}`
-              ) : (
-                `${formatTime(event.start)} - ${formatTime(event.end)}, ${formatDate(event.start)}`
-              )
-            )}
-          </p>
-        </div>
-        {event.rrule && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            Recurring
-          </span>
-        )}
-
-        {/* Hover indicator icon */}
-        <span className="material-symbols-outlined text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-          arrow_forward
-        </span>
-      </div>
-    </div>
-  );
-}
-
 // ============================================================================
 // Main Component
 // ============================================================================
+
 
 const ChatView: React.FC<ChatViewProps> = ({
   onViewChange,
@@ -382,6 +388,9 @@ const ChatView: React.FC<ChatViewProps> = ({
   onEventUpdated,
   onEventDeleted,
   calendars = [],
+  attachedEvent,
+  onClearAttachedEvent,
+  onAttachEvent,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -395,6 +404,63 @@ const ChatView: React.FC<ChatViewProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Focus the chat input
+  const focusInput = useCallback(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+
+  // Handle quiz answer
+  const handleQuizAnswer = useCallback((messageId: string, answer: 'yes' | 'no' | 'custom') => {
+    // Add a user response message
+    const responseText = answer === 'custom'
+      ? '' // Custom will focus input, user types their own
+      : answer === 'yes'
+        ? 'Yes'
+        : 'No';
+
+    if (responseText) {
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: responseText,
+        timestamp: new Date(),
+      }]);
+    }
+  }, []);
+
+  // Handle yes/no answer
+  const handleYesNoAnswer = useCallback((messageId: string, answer: 'yes' | 'no') => {
+    const responseText = answer === 'yes' ? 'Yes' : 'No';
+    setMessages(prev => [...prev, {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: responseText,
+      timestamp: new Date(),
+    }]);
+  }, []);
+
+  // Handle delete event answer
+  const handleDeleteEventAnswer = useCallback((messageId: string, event: CalendarEvent, answer: 'delete' | 'cancel') => {
+    if (answer === 'delete') {
+      // Call the parent delete handler if provided
+      onEventDeleted?.(event);
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `✅ Event "${event.title}" has been deleted.`,
+        timestamp: new Date(),
+      }]);
+    } else {
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Event deletion cancelled.',
+        timestamp: new Date(),
+      }]);
+    }
+  }, [onEventDeleted]);
 
   // Auto-resize textarea
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -410,7 +476,18 @@ const ChatView: React.FC<ChatViewProps> = ({
     const trimmed = inputValue.trim();
     if (!trimmed) return;
 
+    const isQuizCommand = trimmed.toLowerCase() === 'quiz';
+    const isYesNoCommand = trimmed.toLowerCase() === 'yesno';
+    const isEventCommand = trimmed.toLowerCase() === 'event';
+    const isDeleteCommand = trimmed.toLowerCase() === 'delete';
+    // Test commands for multiple events: event1, event2, event3
+    const eventCountMatch = trimmed.toLowerCase().match(/^event([123])$/);
+    const eventCount = eventCountMatch ? parseInt(eventCountMatch[1]) : 0;
+
     setIsAnimating(true);
+
+    // Capture attached event before clearing
+    const eventToAttach = attachedEvent;
 
     // Delay message appearance to sync with animation "fly out"
     setTimeout(() => {
@@ -419,17 +496,158 @@ const ChatView: React.FC<ChatViewProps> = ({
         role: 'user',
         content: trimmed,
         timestamp: new Date(),
+        // Include attached event in the user message
+        event: eventToAttach || undefined,
       }]);
+
+      // Clear the attached event after sending
+      if (eventToAttach && onClearAttachedEvent) {
+        onClearAttachedEvent();
+      }
       setInputValue('');
 
       // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
+
+      // If quiz command, add assistant message with quiz box
+      if (isQuizCommand) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            quiz: {
+              question: 'Would you like to create a new event?',
+            },
+          }]);
+        }, 500);
+      }
+
+      // If yesno command, add assistant message with yes/no box
+      if (isYesNoCommand) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            yesno: {
+              question: 'Are you sure you want to proceed?',
+            },
+          }]);
+        }, 500);
+      }
+
+      // If event command, add assistant message with placeholder event
+      if (isEventCommand) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(14, 0, 0, 0);
+        const tomorrowEnd = new Date(tomorrow);
+        tomorrowEnd.setHours(15, 0, 0, 0);
+
+        const placeholderEvent: CalendarEvent = {
+          id: 'placeholder-event-' + crypto.randomUUID(),
+          title: 'Team Meeting',
+          start: tomorrow,
+          end: tomorrowEnd,
+          type: 'default',
+          description: 'Weekly sync with the team to discuss progress and blockers.',
+          location: 'Conference Room A',
+          isAllDay: false,
+        };
+
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: 'Here is the event you requested:',
+            timestamp: new Date(),
+            event: placeholderEvent,
+          }]);
+        }, 500);
+      }
+
+      // If delete command, add assistant message with delete confirmation
+      if (isDeleteCommand) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(14, 0, 0, 0);
+        const tomorrowEnd = new Date(tomorrow);
+        tomorrowEnd.setHours(15, 0, 0, 0);
+
+        const eventToDelete: CalendarEvent = {
+          id: 'delete-test-event-' + crypto.randomUUID(),
+          title: 'Team Meeting',
+          start: tomorrow,
+          end: tomorrowEnd,
+          type: 'business',
+          description: 'Weekly sync with the team.',
+          location: 'Conference Room B',
+          isAllDay: false,
+        };
+
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            deleteEvent: {
+              event: eventToDelete,
+            },
+          }]);
+        }, 500);
+      }
+
+      // If eventN command (event1, event2, event3), show N placeholder events
+      if (eventCount > 0) {
+        const placeholderEvents: CalendarEvent[] = [];
+        const eventTypes = ['default', 'business', 'personal'];
+        const eventTitles = ['Morning Standup', 'Client Call', 'Team Lunch'];
+        const eventDescriptions = [
+          'Daily sync with the dev team.',
+          'Quarterly review with the client.',
+          'Casual lunch with the team.',
+        ];
+        const eventLocations = ['Zoom', 'Conference Room A', 'Cafeteria'];
+
+        for (let i = 0; i < eventCount; i++) {
+          const eventDate = new Date();
+          eventDate.setDate(eventDate.getDate() + 1);
+          eventDate.setHours(9 + i * 3, 0, 0, 0);
+          const eventEnd = new Date(eventDate);
+          eventEnd.setHours(eventDate.getHours() + 1, 0, 0, 0);
+
+          placeholderEvents.push({
+            id: `placeholder-event-${i}-` + crypto.randomUUID(),
+            title: eventTitles[i],
+            start: eventDate,
+            end: eventEnd,
+            type: eventTypes[i],
+            description: eventDescriptions[i],
+            location: eventLocations[i],
+            isAllDay: false,
+          });
+        }
+
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: `Here are ${eventCount} event${eventCount > 1 ? 's' : ''} for you:`,
+            timestamp: new Date(),
+            events: placeholderEvents,
+          }]);
+        }, 500);
+      }
     }, 400);
 
     setTimeout(() => setIsAnimating(false), 1200);
-  }, [inputValue, isAnimating]);
+  }, [inputValue, isAnimating, attachedEvent, onClearAttachedEvent]);
 
   // Handle Enter key
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -442,7 +660,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* Chat Content Area */}
-      <div className="flex-grow overflow-y-auto flex flex-col items-center pt-8 pb-32 px-4 custom-scrollbar">
+      <div className="flex-grow overflow-y-auto flex flex-col items-center pt-8 pb-40 px-4 custom-scrollbar">
         <div className="w-full max-w-3xl space-y-6">
           {messages.length === 0 ? (
             // Empty state with springy entrance
@@ -540,13 +758,24 @@ const ChatView: React.FC<ChatViewProps> = ({
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (
                 message.role === 'user' ? (
-                  <UserMessage key={message.id} content={message.content} />
+                  <UserMessage
+                    key={message.id}
+                    content={message.content}
+                    event={message.event}
+                    calendars={calendars}
+                    onNavigateToEvent={onNavigateToEvent}
+                  />
                 ) : (
                   <AssistantMessage
                     key={message.id}
                     message={message}
                     onNavigateToEvent={onNavigateToEvent}
                     calendars={calendars}
+                    onQuizAnswer={handleQuizAnswer}
+                    onYesNoAnswer={handleYesNoAnswer}
+                    onDeleteEventAnswer={handleDeleteEventAnswer}
+                    onFocusInput={focusInput}
+                    onAttachToChat={onAttachEvent}
                   />
                 )
               ))}
@@ -556,82 +785,112 @@ const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
+      {/* Bottom Fade Overlay - fades messages before input box */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none"
+        style={{
+          background: 'linear-gradient(to bottom, transparent 0%, hsl(var(--background)) 70%)',
+        }}
+      />
+
       {/* Input Area */}
       <div className="absolute bottom-8 left-0 right-0 flex justify-center px-4">
-        <div className="w-full max-w-3xl bg-card rounded-[2rem] p-2 shadow-2xl border border-border flex items-center gap-2 relative">
+        <div className="w-full max-w-3xl bg-card rounded-[2rem] shadow-2xl border border-border relative overflow-hidden">
 
-          {/* Add Button & Menu */}
-          <div className="relative flex-shrink-0 ml-1">
-            {isMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsMenuOpen(false)}
+          {/* Attached Event Chip - shows above input when event is attached */}
+          <AnimatePresence>
+            {attachedEvent && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                className="px-3 pt-3 pb-1"
+              >
+                <EventAttachmentChip
+                  event={attachedEvent}
+                  calendars={calendars}
+                  onRemove={() => onClearAttachedEvent?.()}
                 />
-                <div className="absolute bottom-12 left-0 w-52 bg-card/95 backdrop-blur-sm border border-border rounded-2xl shadow-2xl z-50 overflow-hidden py-1.5 mb-2 transform origin-bottom-left animate-in fade-in zoom-in-95 duration-200">
-                  <button
-                    onClick={() => { onNavigateToday?.(); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
-                  >
-                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">today</span>
-                    Today
-                  </button>
-                  <button
-                    onClick={() => { onViewChange?.('week'); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
-                  >
-                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">view_week</span>
-                    Week
-                  </button>
-                  <button
-                    onClick={() => { onViewChange?.('month'); setIsMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
-                  >
-                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">calendar_month</span>
-                    Month
-                  </button>
-                </div>
-              </>
+              </motion.div>
             )}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={clsx(
-                "w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200",
-                isMenuOpen
-                  ? "text-foreground rotate-45"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span className="material-symbols-outlined text-[24px]">add</span>
-            </button>
-          </div>
+          </AnimatePresence>
 
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground resize-none py-3 px-2 text-base"
-            placeholder="Ask AI anything..."
-            rows={1}
-            style={{ minHeight: '44px', maxHeight: '120px' }}
-          />
-
-          {/* Send Button */}
-          <div className="flex items-center gap-2 mr-1 flex-shrink-0">
-            <button
-              onClick={handleSend}
-              disabled={!inputValue.trim()}
-              className={clsx(
-                "w-8 h-8 flex items-center justify-center rounded-full transition-colors",
-                inputValue.trim()
-                  ? "bg-primary text-white hover:brightness-110"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
+          {/* Input Row */}
+          <div className="p-2 flex items-center gap-2">
+            {/* Add Button & Menu */}
+            <div className="relative flex-shrink-0 ml-1">
+              {isMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsMenuOpen(false)}
+                  />
+                  <div className="absolute bottom-12 left-0 w-52 bg-card/95 backdrop-blur-sm border border-border rounded-2xl shadow-2xl z-50 overflow-hidden py-1.5 mb-2 transform origin-bottom-left animate-in fade-in zoom-in-95 duration-200">
+                    <button
+                      onClick={() => { onNavigateToday?.(); setIsMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="material-symbols-outlined text-muted-foreground text-[20px]">today</span>
+                      Today
+                    </button>
+                    <button
+                      onClick={() => { onViewChange?.('week'); setIsMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="material-symbols-outlined text-muted-foreground text-[20px]">view_week</span>
+                      Week
+                    </button>
+                    <button
+                      onClick={() => { onViewChange?.('month'); setIsMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-foreground hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="material-symbols-outlined text-muted-foreground text-[20px]">calendar_month</span>
+                      Month
+                    </button>
+                  </div>
+                </>
               )}
-            >
-              <Send size={18} animate={isAnimating} />
-            </button>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className={clsx(
+                  "w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200",
+                  isMenuOpen
+                    ? "text-foreground rotate-45"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="material-symbols-outlined text-[24px]">add</span>
+              </button>
+            </div>
+
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground resize-none py-3 px-2 text-base"
+              placeholder={attachedEvent ? `Ask about "${attachedEvent.title}"...` : "Ask AI anything..."}
+              rows={1}
+              style={{ minHeight: '44px', maxHeight: '120px' }}
+            />
+
+            {/* Send Button */}
+            <div className="flex items-center gap-2 mr-1 flex-shrink-0">
+              <button
+                onClick={handleSend}
+                disabled={!inputValue.trim() && !attachedEvent}
+                className={clsx(
+                  "w-8 h-8 flex items-center justify-center rounded-full transition-colors",
+                  (inputValue.trim() || attachedEvent)
+                    ? "bg-primary text-white hover:brightness-110"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                )}
+              >
+                <Send size={18} animate={isAnimating} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -17,18 +17,18 @@ interface CalendarContextType {
     events: CalendarEvent[];
     calendars: CalendarCategory[];
     isLoading: boolean;
-    
+
     // Actions
     setCurrentView: (view: ViewType) => void;
     setCurrentDate: (date: Date) => void;
     refreshEvents: () => Promise<void>;
-    
+
     // Calendar Management
     addCalendar: (data: { label: string; colorName: string }) => void;
     updateCalendar: (id: string, updates: Partial<CalendarCategory>) => void;
     deleteCalendar: (id: string) => void;
     toggleCalendar: (id: string) => void;
-    
+
     // Event Actions
     createEvent: (eventData: Partial<CalendarEvent>) => Promise<void>;
     updateEvent: (id: string, eventData: Partial<CalendarEvent>) => Promise<void>;
@@ -38,7 +38,7 @@ interface CalendarContextType {
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
 
 export function CalendarProvider({ children }: { children: React.ReactNode }) {
-    const [currentView, setCurrentView] = useState<ViewType>('week');
+    const [currentView, setCurrentView] = useState<ViewType>('chat');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [calendars, setCalendars] = useState<CalendarCategory[]>(DEFAULT_CALENDARS);
@@ -93,10 +93,6 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     const updateCalendar = (id: string, updates: Partial<CalendarCategory>) => {
         setCalendars(calendars.map(cal => {
             if (cal.id === id) {
-                if (cal.isDefault && updates.label) {
-                    updates = { ...updates };
-                    delete updates.label;
-                }
                 const updatedCal = { ...cal, ...updates };
                 if (updates.colorName) {
                     updatedCal.theme = getThemeForColor(updates.colorName);
@@ -136,23 +132,23 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
 
     const updateEvent = async (id: string, eventData: Partial<CalendarEvent>) => {
         // Handle instance IDs (e.g., event_id_date)
-        
+
         // If the ID format is evt_TIMESTAMP_RANDOM_DATE, splitting might be tricky.
         // Let's rely on the fact that instance IDs usually append _DATE at the end.
         // But our DB logic for instance ID is: `${event.id}_${instanceStart.toISOString()}`
         // And event.id is `evt_${Date.now()}_${random}`
         // So a recurring instance ID looks like: evt_123_abc_2025-01-01T00:00:00.000Z
-        
+
         // Safer extraction:
         // If it contains more than 2 underscores AND ends with a date-like string, it's an instance.
         // But wait, generateEventId uses `evt_TIMESTAMP_RANDOM`. That has 2 underscores.
         // Instance ID adds a 3rd underscore: `evt_TIMESTAMP_RANDOM_ISOSTRING`.
-        
+
         let targetId = id;
         const parts = id.split('_');
         if (parts.length > 3) {
-             // It's likely an instance ID, remove the last part (date)
-             targetId = parts.slice(0, 3).join('_');
+            // It's likely an instance ID, remove the last part (date)
+            targetId = parts.slice(0, 3).join('_');
         }
 
         await updateEventApi(targetId, eventData);
@@ -163,9 +159,9 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
         let targetId = id;
         const parts = id.split('_');
         if (parts.length > 3) {
-             targetId = parts.slice(0, 3).join('_');
+            targetId = parts.slice(0, 3).join('_');
         }
-        
+
         await deleteEventApi(targetId);
         await loadEvents();
     };

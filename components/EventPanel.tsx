@@ -6,6 +6,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import TimePicker from './TimePicker';
 import DatePicker from './DatePicker';
 import { Button } from '@/components/animate-ui/components/buttons/button';
+import { MessageSquareShare } from '@/components/animate-ui/icons/message-square-share';
 
 export type EventPanelMode = 'view' | 'edit' | 'create';
 
@@ -18,6 +19,7 @@ interface EventPanelProps {
     onEdit: () => void;
     onDelete: () => void;
     onSave: (event: Partial<CalendarEvent>) => void;
+    onChatAboutEvent?: (event: CalendarEvent) => void;
     calendars?: CalendarCategory[];
 }
 
@@ -140,6 +142,7 @@ const EventPanel: React.FC<EventPanelProps> = ({
     onEdit,
     onDelete,
     onSave,
+    onChatAboutEvent,
     calendars = []
 }) => {
     // ----------------------------------------------------------------------
@@ -567,6 +570,13 @@ const EventPanel: React.FC<EventPanelProps> = ({
                                     >
                                         <span className="material-symbols-outlined text-[18px]">delete</span>
                                     </motion.button>
+                                    {onChatAboutEvent && event && (
+                                        <MessageSquareShare
+                                            size={18}
+                                            className="w-8 h-8 p-1.5 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-full transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                                            onClick={() => onChatAboutEvent(event)}
+                                        />
+                                    )}
                                     <div className="w-[1px] h-4 bg-border mx-1"></div>
                                 </>
                             )}
