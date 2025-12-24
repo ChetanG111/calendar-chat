@@ -107,7 +107,7 @@ const EventPanel: React.FC<EventPanelProps> = ({
                             </motion.div>
                         ) : (
                             <motion.div
-                                key="edit"
+                                key={mode}
                                 variants={editModeVariants}
                                 initial="hidden"
                                 animate="visible"

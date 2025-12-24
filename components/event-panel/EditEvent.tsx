@@ -43,6 +43,13 @@ export const EditEvent: React.FC<EditEventProps> = ({
     // Initialize form data
     useEffect(() => {
         const targetEvent = mode === 'edit' ? event : undefined;
+        
+        const formatDate = (date: Date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
         if (targetEvent) {
             setTitle(targetEvent.title);
@@ -51,8 +58,8 @@ export const EditEvent: React.FC<EditEventProps> = ({
             setEventType(targetEvent.type);
             setStartTime(targetEvent.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
             setEndTime(targetEvent.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-            setStartDate(targetEvent.startDate || targetEvent.start.toISOString().split('T')[0]);
-            setEndDate(targetEvent.endDate || targetEvent.end.toISOString().split('T')[0]);
+            setStartDate(targetEvent.startDate || formatDate(targetEvent.start));
+            setEndDate(targetEvent.endDate || formatDate(targetEvent.end));
             setIsAllDay(targetEvent.isAllDay || false);
         } else if (mode === 'create') {
             const data = initialData || {};
@@ -67,27 +74,35 @@ export const EditEvent: React.FC<EditEventProps> = ({
             setTitle(data.title || '');
             setDescription(data.description || '');
             setLocation(data.location || '');
-            setEventType(data.type || (calendars.length > 0 ? (calendars.find(c => c.isDefault)?.id || calendars[0].id) : 'default'));
-
+            // Do not set event type here based on calendars to avoid reset
+            
             if (data.start) {
                 setStartTime(formatTime(data.start));
-                setStartDate(data.startDate || data.start.toISOString().split('T')[0]);
+                setStartDate(data.startDate || formatDate(data.start));
             } else {
                 setStartTime(formatTime(defaultStart));
-                setStartDate(now.toISOString().split('T')[0]);
+                setStartDate(formatDate(now));
             }
 
             if (data.end) {
                 setEndTime(formatTime(data.end));
-                setEndDate(data.endDate || data.end.toISOString().split('T')[0]);
+                setEndDate(data.endDate || formatDate(data.end));
             } else {
                 setEndTime(formatTime(defaultEnd));
-                setEndDate(now.toISOString().split('T')[0]);
+                setEndDate(formatDate(now));
             }
 
             setIsAllDay(data.isAllDay || false);
         }
-    }, [mode, event, initialData, calendars]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, event, initialData]);
+
+    // Separate effect to set default calendar when they load
+    useEffect(() => {
+        if (mode === 'create' && eventType === 'default' && calendars.length > 0) {
+             setEventType(calendars.find(c => c.isDefault)?.id || calendars[0].id);
+        }
+    }, [calendars, mode, eventType]);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
