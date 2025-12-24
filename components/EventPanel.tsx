@@ -1,137 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
-import TimePicker from './TimePicker';
-import DatePicker from './DatePicker';
-import { Button } from '@/components/animate-ui/components/buttons/button';
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquareShare } from '@/components/animate-ui/icons/message-square-share';
-
-export type EventPanelMode = 'view' | 'edit' | 'create';
-
-interface EventPanelProps {
-    isOpen: boolean;
-    mode: EventPanelMode;
-    event?: CalendarEvent;
-    initialData?: Partial<CalendarEvent>;
-    onClose: () => void;
-    onEdit: () => void;
-    onDelete: () => void;
-    onSave: (event: Partial<CalendarEvent>) => void;
-    onChatAboutEvent?: (event: CalendarEvent) => void;
-    calendars?: CalendarCategory[];
-}
-
-const containerVariants: Variants = {
-    hidden: {
-        x: 480,
-        opacity: 0,
-        scale: 0.98,
-        filter: "blur(10px)",
-        boxShadow: "0 0 0 rgba(0,0,0,0)"
-    },
-    visible: {
-        x: 0,
-        opacity: 1,
-        scale: 1,
-        filter: "blur(0px)",
-        boxShadow: "0 24px 48px rgba(0,0,0,0.75)",
-        transition: {
-            type: "spring",
-            damping: 24,
-            stiffness: 280,
-            mass: 0.8,
-            staggerChildren: 0.08,
-            delayChildren: 0.1
-        }
-    },
-    exit: {
-        x: 480,
-        opacity: 0,
-        scale: 0.98,
-        filter: "blur(10px)",
-        boxShadow: "0 0 0 rgba(0,0,0,0)",
-        transition: {
-            type: "spring",
-            damping: 30,
-            stiffness: 300,
-            mass: 1,
-            velocity: 2
-        }
-    }
-};
-
-const itemVariants: Variants = {
-    hidden: {
-        opacity: 0,
-        y: 20,
-        scale: 0.95,
-        filter: "blur(4px)"
-    },
-    visible: {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        filter: "blur(0px)",
-        transition: {
-            type: "spring",
-            stiffness: 400,
-            damping: 25,
-            mass: 0.8
-        }
-    }
-};
-
-const editModeVariants: Variants = {
-    hidden: {
-        opacity: 0,
-    },
-    visible: {
-        opacity: 1,
-        transition: {
-            staggerChildren: 0.06,
-            delayChildren: 0.02
-        }
-    },
-    exit: {
-        opacity: 0,
-        transition: { duration: 0.15 }
-    }
-};
-
-const viewModeVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: {
-            staggerChildren: 0.1,
-            delayChildren: 0.05
-        }
-    },
-    exit: { opacity: 0, transition: { duration: 0.15 } }
-};
-
-const defaultTheme: CalendarTheme = {
-    primary: 'blue',
-    bg: 'bg-blue-500/20',
-    border: 'border-blue-500',
-    text: 'text-blue-100',
-    dot: 'bg-blue-500',
-    hover: 'hover:bg-blue-500/30',
-    solidBg: 'bg-blue-500'
-};
-
-const contentContainerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: {
-            delayChildren: 0.1,
-            staggerChildren: 0.08
-        }
-    }
-};
+import { EventPanelProps } from './event-panel/types';
+import { ViewEvent } from './event-panel/ViewEvent';
+import { EditEvent } from './event-panel/EditEvent';
+import {
+    containerVariants,
+    itemVariants,
+    viewModeVariants,
+    editModeVariants
+} from './event-panel/animations';
 
 const EventPanel: React.FC<EventPanelProps> = ({
     isOpen,
@@ -145,391 +25,6 @@ const EventPanel: React.FC<EventPanelProps> = ({
     onChatAboutEvent,
     calendars = []
 }) => {
-    // ----------------------------------------------------------------------
-    // Form State (for Edit/Create modes)
-    // ----------------------------------------------------------------------
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [location, setLocation] = useState('');
-    const [startTime, setStartTime] = useState('');
-    const [endTime, setEndTime] = useState('');
-    const [startDate, setStartDate] = useState<string>('');
-    const [endDate, setEndDate] = useState<string>('');
-    const [eventType, setEventType] = useState<string>('default');
-    const [isAllDay, setIsAllDay] = useState(false);
-
-    // Dropdown state
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    // Initialize form data when opening in create/edit mode
-    useEffect(() => {
-        if (!isOpen) {
-            setIsDropdownOpen(false);
-            return;
-        }
-
-        const targetEvent = mode === 'edit' ? event : undefined;
-
-        if (targetEvent) {
-            setTitle(targetEvent.title);
-            setDescription(targetEvent.description || '');
-            setLocation(targetEvent.location || '');
-            setEventType(targetEvent.type);
-            setStartTime(targetEvent.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-            setEndTime(targetEvent.end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-            setStartDate(targetEvent.startDate || targetEvent.start.toISOString().split('T')[0]);
-            setEndDate(targetEvent.endDate || targetEvent.end.toISOString().split('T')[0]);
-            setIsAllDay(targetEvent.isAllDay || false);
-        } else if (mode === 'create') {
-            const data = initialData || {};
-            const now = new Date();
-
-            const defaultStart = new Date(now);
-            const defaultEnd = new Date(defaultStart);
-            defaultEnd.setHours(defaultStart.getHours() + 1);
-
-            const formatTime = (date: Date) => date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-            setTitle(data.title || '');
-            setDescription(data.description || '');
-            setLocation(data.location || '');
-            setEventType(data.type || (calendars.length > 0 ? (calendars.find(c => c.isDefault)?.id || calendars[0].id) : 'default'));
-
-            if (data.start) {
-                setStartTime(formatTime(data.start));
-                setStartDate(data.startDate || data.start.toISOString().split('T')[0]);
-            } else {
-                setStartTime(formatTime(defaultStart));
-                setStartDate(now.toISOString().split('T')[0]);
-            }
-
-            if (data.end) {
-                setEndTime(formatTime(data.end));
-                setEndDate(data.endDate || data.end.toISOString().split('T')[0]);
-            } else {
-                setEndTime(formatTime(defaultEnd));
-                setEndDate(now.toISOString().split('T')[0]);
-            }
-
-            setIsAllDay(data.isAllDay || false);
-        }
-    }, [isOpen, mode, event, initialData, calendars]);
-
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-                setIsDropdownOpen(false);
-            }
-        };
-        if (isDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isDropdownOpen]);
-
-
-    const handleFormSave = () => {
-        const baseStartDate = startDate ? new Date(`${startDate}T00:00:00`) : new Date();
-        const baseEndDate = endDate ? new Date(`${endDate}T00:00:00`) : baseStartDate;
-
-        let start = new Date(baseStartDate);
-        let end = new Date(baseEndDate);
-
-        if (isAllDay) {
-            start.setHours(0, 0, 0, 0);
-            end.setHours(23, 59, 59, 999);
-        } else {
-            const [startH, startM] = startTime.split(':').map(Number);
-            const [endH, endM] = endTime.split(':').map(Number);
-            start.setHours(startH || 0, startM || 0, 0, 0);
-            end.setHours(endH || 0, endM || 0, 0, 0);
-
-            if (end < start) {
-                end.setDate(end.getDate() + 1);
-            }
-        }
-
-        onSave({
-            title: title || '(No title)',
-            start,
-            end,
-            startDate: startDate || start.toISOString().split('T')[0],
-            endDate: endDate || end.toISOString().split('T')[0],
-            description,
-            location,
-            type: eventType,
-            isAllDay: isAllDay
-        });
-    };
-
-    const selectedCalendar = calendars.find(c => c.id === eventType) || calendars[0];
-    const viewTheme = event ? (calendars?.find(c => c.id === event.type)?.theme || defaultTheme) : defaultTheme;
-
-    const renderViewMode = () => {
-        if (!event) return null;
-        const durationMinutes = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
-        const hours = Math.floor(durationMinutes / 60);
-        const mins = durationMinutes % 60;
-        const durationString = `${hours > 0 ? `${hours} h ` : ''}${mins > 0 ? `${mins} min` : ''}`;
-
-        return (
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <motion.div variants={contentContainerVariants} className="p-6 pt-2 flex flex-col gap-5">
-                    {/* Title */}
-                    <motion.div variants={itemVariants} className="flex gap-4 items-start">
-                        {event.end >= new Date() && (
-                            <div className={`w-4 h-4 rounded mt-1.5 flex-shrink-0 ${viewTheme.bg} ${viewTheme.border} border`}></div>
-                        )}
-                        <div className="flex-1">
-                            <h2 className="text-[22px] leading-tight font-normal text-[#e8eaed]">{event.title}</h2>
-                            <div className="text-sm text-[#9aa0a6] mt-1">
-                                {event.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Time */}
-                    <motion.div variants={itemVariants} className="flex gap-4 items-start">
-                        <div className="w-8 flex justify-center text-[#9aa0a6]">
-                            <span className="material-symbols-outlined text-[20px]">schedule</span>
-                        </div>
-                        <div className="flex-1">
-                            <div className="text-sm text-[#e8eaed]">
-                                {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} {'\u2192'} {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                <span className="text-[#9aa0a6] ml-2">{durationString}</span>
-                            </div>
-                            <div className="text-xs text-[#9aa0a6] mt-1">Time zone • Repeat</div>
-                        </div>
-                    </motion.div>
-
-                    {/* Creator */}
-                    <motion.div variants={itemVariants} className="flex gap-4 items-start">
-                        <div className="w-8 flex justify-center text-[#9aa0a6]">
-                            <span className="material-symbols-outlined text-[20px]">person</span>
-                        </div>
-                        <div className="flex-1">
-                            <div className="text-sm text-[#e8eaed]">Created by <span className="text-[#9aa0a6]">you</span></div>
-                        </div>
-                    </motion.div>
-
-                    {/* Location */}
-                    {event.location && (
-                        <motion.div variants={itemVariants} className="flex gap-4 items-start">
-                            <div className="w-8 flex justify-center text-[#9aa0a6]">
-                                <span className="material-symbols-outlined text-[20px]">location_on</span>
-                            </div>
-                            <div className="flex-1">
-                                <div className="text-sm text-blue-400 hover:underline cursor-pointer">{event.location}</div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* Description */}
-                    <motion.div variants={itemVariants} className="flex gap-4 items-start">
-                        <div className="w-8 flex justify-center text-[#9aa0a6]">
-                            <span className="material-symbols-outlined text-[20px]">subject</span>
-                        </div>
-                        <div className="flex-1">
-                            <div className="text-sm text-[#e8eaed] whitespace-pre-wrap">
-                                {event.description || <span className="text-[#9aa0a6] italic">No description</span>}
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Footer Calendar Info */}
-                    <motion.div variants={itemVariants} className="flex gap-4 items-center pt-2">
-                        <div className="w-8 flex justify-center text-[#9aa0a6]">
-                            <span className="material-symbols-outlined text-[20px]">calendar_today</span>
-                        </div>
-                        <div className="flex-1 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${viewTheme.dot}`}></div>
-                                <span className="text-sm text-[#e8eaed] capitalize">{calendars?.find(c => c.id === event.type)?.label || event.type}</span>
-                            </div>
-                        </div>
-                    </motion.div>
-                </motion.div>
-            </div>
-        );
-    };
-
-    const renderEditMode = () => {
-        return (
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <motion.div variants={contentContainerVariants} className="p-6 pt-2 flex flex-col gap-5">
-
-                    {/* Title Input */}
-                    <motion.div variants={itemVariants} className="ml-10">
-                        <input
-                            autoFocus
-                            className="w-full bg-transparent focus:bg-[#303134]/50 border-0 px-2 py-1.5 rounded-md text-[20px] text-[#e8eaed] focus:ring-0 placeholder-[#9aa0a6] font-normal leading-tight transition-all duration-200 outline-none"
-                            placeholder="Title"
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                        />
-                    </motion.div>
-
-                    {/* Date & Time */}
-                    <motion.div variants={itemVariants} className="flex gap-5 items-start">
-                        <div className="w-6 flex justify-center mt-1">
-                            <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">schedule</span>
-                        </div>
-                        <div className="flex-1 flex flex-col gap-2">
-                            <div className="flex flex-col gap-1 text-[#e8eaed] text-sm">
-                                {/* Start Date/Time */}
-                                <div className="flex items-center gap-3">
-                                    <DatePicker
-                                        value={startDate}
-                                        onChange={setStartDate}
-                                        placeholder="Start date"
-                                        className="w-[140px]"
-                                    />
-
-                                    {!isAllDay && (
-                                        <div className="relative">
-                                            <TimePicker
-                                                value={startTime}
-                                                onChange={setStartTime}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Arrow */}
-                                <div className="flex items-center pl-[50px]">
-                                    <span className="material-symbols-outlined text-[#9aa0a6] text-[20px]">arrow_downward</span>
-                                </div>
-
-                                {/* End Date/Time */}
-                                <div className="flex items-center gap-3">
-                                    <DatePicker
-                                        value={endDate}
-                                        onChange={setEndDate}
-                                        placeholder="End date"
-                                        className="w-[140px]"
-                                    />
-
-                                    {!isAllDay && (
-                                        <div className="relative">
-                                            <TimePicker
-                                                value={endTime}
-                                                onChange={setEndTime}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex gap-3 mt-1 text-xs text-[#9aa0a6]">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAllDay(!isAllDay)}
-                                    className={`px-2 py-1 -ml-2 rounded transition-colors text-left font-medium ${isAllDay ? 'bg-blue-500/20 text-blue-200' : 'hover:bg-[#303134] text-[#9aa0a6]'}`}
-                                >
-                                    All-day
-                                </button>
-                                <button className="hover:bg-[#303134] px-2 py-1 rounded transition-colors text-left font-medium">Repeat</button>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Location */}
-                    <motion.div variants={itemVariants} className="flex gap-5 items-start">
-                        <div className="w-6 flex justify-center mt-1">
-                            <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">location_on</span>
-                        </div>
-                        <div className="flex-1">
-                            <input
-                                className="w-full bg-[#303134]/20 focus:bg-[#303134]/60 border border-zinc-700/30 hover:border-zinc-600/60 rounded-lg px-4 py-2 text-sm text-[#e8eaed] placeholder-[#9aa0a6]/70 focus:ring-0 transition-all duration-200 outline-none"
-                                placeholder="Add location"
-                                type="text"
-                                value={location}
-                                onChange={(e) => setLocation(e.target.value)}
-                            />
-                        </div>
-                    </motion.div>
-
-                    {/* Description */}
-                    <motion.div variants={itemVariants} className="flex gap-5 items-start">
-                        <div className="w-6 flex justify-center mt-1">
-                            <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">segment</span>
-                        </div>
-                        <div className="flex-1">
-                            <textarea
-                                className="w-full bg-[#303134]/20 focus:bg-[#303134]/60 border border-zinc-700/30 hover:border-zinc-600/60 rounded-lg px-4 py-3 text-sm text-[#e8eaed] placeholder-[#9aa0a6]/70 focus:ring-0 resize-none transition-all duration-200 outline-none"
-                                placeholder="Add description"
-                                rows={4}
-                                value={description}
-                                onChange={e => setDescription(e.target.value)}
-                            ></textarea>
-                        </div>
-                    </motion.div>
-
-                    {/* Calendar Select */}
-                    <motion.div variants={itemVariants} className="flex gap-5 items-start pt-4 mt-2 border-t border-[#3c4043]">
-                        <div className="w-6 flex justify-center mt-1">
-                            <span className="material-symbols-outlined text-[#9aa0a6] text-[22px]">calendar_today</span>
-                        </div>
-                        <div className="flex-1 flex flex-col gap-3">
-                            <div className="relative" ref={dropdownRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className="flex items-center gap-2 hover:bg-[#303134] px-3 py-1.5 -ml-3 rounded transition-colors group/cal cursor-pointer outline-none w-full text-left"
-                                >
-                                    <div className={`w-3.5 h-3.5 rounded-full ${selectedCalendar?.theme?.solidBg || 'bg-blue-500'}`}></div>
-                                    <span className="text-[#e8eaed] text-sm font-medium">
-                                        {selectedCalendar?.label || 'Calendar'}
-                                    </span>
-                                    <span className={`material-symbols-outlined text-[#9aa0a6] text-[20px] transition-transform duration-200 ml-auto ${isDropdownOpen ? 'rotate-180' : ''}`}>
-                                        arrow_drop_down
-                                    </span>
-                                </button>
-
-                                {isDropdownOpen && (
-                                    <div className="absolute bottom-full left-0 mb-1 w-56 bg-[#202124] border border-[#5f6368] rounded-lg shadow-xl z-[70] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 origin-bottom-left">
-                                        {calendars.map((option) => (
-                                            <button
-                                                key={option.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setEventType(option.id);
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                                className={`w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm transition-colors
-                                                    ${eventType === option.id ? 'bg-[#1967d2] text-white' : 'text-[#e8eaed] hover:bg-[#3c4043]'}
-                                                `}
-                                            >
-                                                <div className={`w-2.5 h-2.5 rounded-full ${option.theme.solidBg} ${eventType === option.id ? 'ring-2 ring-white/50' : ''}`}></div>
-                                                <span className="flex-1 truncate">{option.label}</span>
-                                                {eventType === option.id && (
-                                                    <span className="material-symbols-outlined text-[18px]">check</span>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Footer Actions */}
-                    <motion.div variants={itemVariants} className="flex justify-end pt-4 gap-3">
-                        <button onClick={onClose} className="px-5 py-2.5 rounded text-sm font-medium text-[#e8eaed] hover:bg-[#303134] transition-colors">Cancel</button>
-                        <Button
-                            onClick={handleFormSave}
-                            className="px-8 py-2.5 rounded text-sm font-medium bg-primary text-white hover:brightness-110 transition-colors shadow-lg font-semibold tracking-wide border-0"
-                            hoverScale={1.02}
-                            tapScale={0.98}
-                        >
-                            Save
-                        </Button>
-                    </motion.div>
-                </motion.div>
-            </div>
-        );
-    }
-
     return (
         <AnimatePresence>
             {isOpen && (
@@ -593,7 +88,7 @@ const EventPanel: React.FC<EventPanelProps> = ({
                     </div>
 
                     <AnimatePresence mode="wait">
-                        {mode === 'view' ? (
+                        {mode === 'view' && event ? (
                             <motion.div
                                 key="view"
                                 variants={viewModeVariants}
@@ -602,7 +97,11 @@ const EventPanel: React.FC<EventPanelProps> = ({
                                 exit="exit"
                                 className="flex-1 overflow-hidden flex flex-col"
                             >
-                                {renderViewMode()}
+                                <ViewEvent
+                                    event={event}
+                                    calendars={calendars}
+                                    onClose={onClose}
+                                />
                             </motion.div>
                         ) : (
                             <motion.div
@@ -613,7 +112,14 @@ const EventPanel: React.FC<EventPanelProps> = ({
                                 exit="exit"
                                 className="flex-1 overflow-hidden flex flex-col"
                             >
-                                {renderEditMode()}
+                                <EditEvent
+                                    mode={mode === 'create' ? 'create' : 'edit'}
+                                    event={event}
+                                    initialData={initialData}
+                                    calendars={calendars}
+                                    onClose={onClose}
+                                    onSave={onSave}
+                                />
                             </motion.div>
                         )}
                     </AnimatePresence>
