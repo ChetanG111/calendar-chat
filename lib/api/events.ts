@@ -18,6 +18,8 @@ interface ApiEvent {
     title: string;
     start: string;
     end: string;
+    startDate?: string;
+    endDate?: string;
     type: 'business' | 'personal' | 'meetings' | 'holiday';
     description?: string;
     location?: string;
@@ -35,11 +37,14 @@ interface ApiEvent {
 function toCalendarEvent(apiEvent: ApiEvent): CalendarEvent {
     return {
         id: apiEvent.id,
+        eventId: apiEvent.eventId,
         title: apiEvent.title,
         start: new Date(apiEvent.start),
         end: new Date(apiEvent.end),
+        startDate: apiEvent.startDate || undefined,
+        endDate: apiEvent.endDate || undefined,
         type: apiEvent.type,
-        description: apiEvent.description,
+        description: apiEvent.description || undefined,
         location: apiEvent.location,
         guests: apiEvent.guests,
         meetLink: apiEvent.meetLink,

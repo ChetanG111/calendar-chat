@@ -14,6 +14,8 @@ export interface DbEvent {
     description: string | null;
     start_at: string;        // ISO 8601 UTC
     end_at: string;          // ISO 8601 UTC
+    start_date: string | null; // YYYY-MM-DD format (date only)
+    end_date: string | null;   // YYYY-MM-DD format (date only)
     timezone: string;        // IANA timezone (e.g., "Asia/Kolkata")
     is_all_day: number;      // SQLite doesn't have boolean, 0 or 1
     rrule: string | null;    // RFC 5545 RRULE string
@@ -27,7 +29,7 @@ export interface DbEvent {
  * Metadata stored in the JSON blob
  */
 export interface EventMetadata {
-    type?: 'business' | 'personal' | 'meetings' | 'holiday';
+    type?: 'business' | 'personal' | 'meetings' | 'holiday' | 'default';
     color?: string;
     tags?: string[];
     source?: string;
@@ -46,6 +48,8 @@ export interface CreateEventInput {
     description?: string;
     startAt: Date;           // Will be converted to UTC
     endAt: Date;             // Will be converted to UTC
+    startDate?: string;      // YYYY-MM-DD format
+    endDate?: string;        // YYYY-MM-DD format
     timezone: string;        // IANA timezone
     isAllDay?: boolean;
     rrule?: string;          // RFC 5545 RRULE string
@@ -61,6 +65,8 @@ export interface UpdateEventInput {
     description?: string | null;
     startAt?: Date;
     endAt?: Date;
+    startDate?: string | null;
+    endDate?: string | null;
     timezone?: string;
     isAllDay?: boolean;
     rrule?: string | null;
@@ -77,6 +83,8 @@ export interface StoredEvent {
     description: string | null;
     startAt: Date;
     endAt: Date;
+    startDate: string | null;
+    endDate: string | null;
     timezone: string;
     isAllDay: boolean;
     rrule: string | null;
@@ -101,6 +109,10 @@ export interface ExpandedEventInstance {
     startAt: Date;
     /** End time for THIS occurrence */
     endAt: Date;
+    /** Start date for THIS occurrence (YYYY-MM-DD) */
+    startDate: string | null;
+    /** End date for THIS occurrence (YYYY-MM-DD) */
+    endDate: string | null;
     timezone: string;
     isAllDay: boolean;
     /** Whether this is a recurring event */

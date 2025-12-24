@@ -17,6 +17,20 @@ import type {
     EventMetadata,
 } from './types';
 
+// Simple in-memory cache for expanded instances
+// Key: "startMs-endMs-expandRecurrence"
+// Value: Array of expanded instances
+const queryCache = new Map<string, ExpandedEventInstance[]>();
+
+/**
+ * Clear the entire query cache
+ * Call this on any DB write operation
+ */
+function invalidateCache() {
+    queryCache.clear();
+    console.log('[Events] Cache invalidated');
+}
+
 /**
  * Generate a unique event ID
  */
@@ -29,6 +43,19 @@ function generateEventId(): string {
  */
 function toUtcString(date: Date): string {
     return date.toISOString();
+}
+
+/**
+ * Format a Date object to a YYYY-MM-DD string in a specific timezone.
+ * Uses 'en-CA' locale (ISO 8601 format) to ensure YYYY-MM-DD.
+ */
+function toTimezoneDateString(date: Date, timezone: string): string {
+    try {
+        return date.toLocaleDateString('en-CA', { timeZone: timezone });
+    } catch (e) {
+        console.warn(`[Events] Invalid timezone '${timezone}', falling back to UTC`);
+        return date.toLocaleDateString('en-CA', { timeZone: 'UTC' });
+    }
 }
 
 /**
@@ -53,13 +80,20 @@ function dbEventToStoredEvent(row: DbEvent): StoredEvent {
         }
     }
 
+    const startAt = new Date(row.start_at);
+    const endAt = new Date(row.end_at);
+    // Use the stored timezone, or default to UTC if missing/invalid
+    const timezone = row.timezone || 'UTC';
+
     return {
         id: row.id,
         title: row.title,
         description: row.description,
-        startAt: new Date(row.start_at),
-        endAt: new Date(row.end_at),
-        timezone: row.timezone,
+        startAt,
+        endAt,
+        startDate: toTimezoneDateString(startAt, timezone),
+        endDate: toTimezoneDateString(endAt, timezone),
+        timezone,
         isAllDay: row.is_all_day === 1,
         rrule: row.rrule,
         exdates,
@@ -106,6 +140,7 @@ export function createEvent(input: CreateEventInput): StoredEvent {
         updated_at: now,
     });
 
+    invalidateCache();
     console.log(`[Events] Created event: ${id} - "${input.title}"`);
 
     // Fetch and return the created event
@@ -168,6 +203,8 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
         updates.push('end_at = @end_at');
         params.end_at = toUtcString(input.endAt);
     }
+    // Note: startDate and endDate inputs are ignored as they are derived from startAt/endAt + timezone
+    
     if (input.timezone !== undefined) {
         updates.push('timezone = @timezone');
         params.timezone = input.timezone;
@@ -202,6 +239,7 @@ export function updateEvent(id: string, input: UpdateEventInput): StoredEvent | 
     const stmt = db.prepare(sql);
     stmt.run(params);
 
+    invalidateCache();
     console.log(`[Events] Updated event: ${id}`);
 
     return getEventById(id);
@@ -220,6 +258,7 @@ export function deleteEvent(id: string): boolean {
     const result = stmt.run(id);
 
     if (result.changes > 0) {
+        invalidateCache();
         console.log(`[Events] Deleted event: ${id}`);
         return true;
     }
@@ -241,6 +280,13 @@ export function deleteEvent(id: string): boolean {
  */
 export function queryEventsInRange(options: EventQueryOptions): ExpandedEventInstance[] {
     const { rangeStart, rangeEnd, expandRecurrence = true } = options;
+
+    const cacheKey = `${rangeStart.getTime()}-${rangeEnd.getTime()}-${expandRecurrence}`;
+    if (queryCache.has(cacheKey)) {
+        console.log('[Events] Returning cached instances');
+        return queryCache.get(cacheKey)!;
+    }
+
     const db = getDatabase();
 
     const rangeStartStr = toUtcString(rangeStart);
@@ -282,6 +328,8 @@ export function queryEventsInRange(options: EventQueryOptions): ExpandedEventIns
                 description: event.description,
                 startAt: event.startAt,
                 endAt: event.endAt,
+                startDate: event.startDate,
+                endDate: event.endDate,
                 timezone: event.timezone,
                 isAllDay: event.isAllDay,
                 isRecurring: !!event.rrule,
@@ -296,6 +344,7 @@ export function queryEventsInRange(options: EventQueryOptions): ExpandedEventIns
 
     console.log(`[Events] Query returned ${instances.length} instances for range ${rangeStartStr} to ${rangeEndStr}`);
 
+    queryCache.set(cacheKey, instances);
     return instances;
 }
 

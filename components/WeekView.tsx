@@ -1,19 +1,57 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarEvent, EVENT_THEMES } from '@/types';
+import { CalendarEvent, CalendarCategory, CalendarTheme } from '@/types';
 import { arrangeEvents } from '@/lib/utils';
+import { getThemeForColor } from '@/types';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
+  calendars?: CalendarCategory[];
   onDateChange: (date: Date) => void;
   onNewEvent?: (data?: Partial<CalendarEvent>) => void;
   onEventClick?: (event: CalendarEvent, eventRect: DOMRect, containerRect: DOMRect) => void;
   selectedEventId?: string;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, onNewEvent, onEventClick, selectedEventId }) => {
+const defaultTheme: CalendarTheme = {
+  primary: 'blue',
+  bg: 'bg-blue-500/20',
+  border: 'border-blue-500',
+  text: 'text-blue-100',
+  dot: 'bg-blue-500',
+  hover: 'hover:bg-blue-500/30',
+  solidBg: 'bg-blue-500'
+};
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.02,
+      delayChildren: 0.05
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.8, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 20
+    }
+  }
+};
+
+const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, calendars, onDateChange, onNewEvent, onEventClick, selectedEventId }) => {
   // Calculate start of week (Sunday)
   const startOfWeek = new Date(currentDate);
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
@@ -28,7 +66,6 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
   const hours = Array.from({ length: 24 }, (_, i) => i); // 0 to 23
 
   // State for current time indicator position
-  // Initialize with current time so it renders immediately
   const [currentTimePosition, setCurrentTimePosition] = useState<number>(() => {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
@@ -52,16 +89,33 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
       d.getFullYear() === today.getFullYear();
   };
 
-  // Check if today is in the current view
-  const isTodayInView = weekDays.some(day => isToday(day));
+  // Scroll to current time on mount
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Only scroll if we are looking at the current week
+    // But user request says "whenever the calendar loads", so probably good to just scroll to "now" position regardless of date, 
+    // though it makes most sense if today is visible.
+    // The prompt implies: "shifts the view to today and the current time".
+    if (scrollContainerRef.current) {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      scrollContainerRef.current.scrollTop = Math.max(0, minutes - 200);
+    }
+  }, []);
 
   return (
-    <div className="flex flex-1 flex-col min-w-0 bg-background-dark relative h-full">
+    <motion.div 
+      className="flex flex-1 flex-col min-w-0 bg-background relative h-full"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Week Header */}
-      <div className="flex-none flex border-b border-border-dark bg-surface-dark">
-        <div className="w-16 flex-shrink-0 border-r border-border-dark">
-          <div className="h-16 flex items-end justify-center pb-2 text-xs text-gray-500">
-            GMT-05
+      <motion.div variants={itemVariants} className="flex-none flex border-b border-border bg-card">
+        <div className="w-16 flex-shrink-0 border-r border-border">
+          <div className="h-16 flex items-end justify-center pb-2 text-xs text-muted-foreground">
+            {Intl.DateTimeFormat().resolvedOptions().timeZone}
           </div>
         </div>
         <div className="flex-1 relative">
@@ -71,14 +125,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
               const isSelected = day.getDate() === currentDate.getDate();
               return (
                 <div key={idx} className={`h-16 flex flex-col items-center justify-center relative ${active ? 'bg-primary/5' : ''}`}>
-                  <span className={`text-xs font-medium uppercase mb-1 ${active ? 'text-primary' : 'text-gray-400'}`}>
+                  <span className={`text-xs font-medium uppercase mb-1 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
                     {day.toLocaleDateString('en-US', { weekday: 'short' })}
                   </span>
                   <button
                     onClick={() => onDateChange(day)}
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-semibold transition-all
-                    ${active ? 'bg-primary text-white' : 'text-gray-200 hover:bg-white/10'}
-                    ${!active && isSelected ? 'bg-white/10' : ''}
+                    ${active ? 'bg-primary text-white' : 'text-foreground hover:bg-accent'}
+                    ${!active && isSelected ? 'bg-accent' : ''}
                   `}>
                     {day.getDate()}
                   </button>
@@ -88,14 +142,14 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
           </div>
           {/* Vertical grid lines */}
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark" style={{ left: `${((i + 1) / 7) * 100}%` }} />
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-border" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* All Day Section */}
-      <div className="flex-none flex border-b border-border-dark bg-surface-dark min-h-[40px]">
-        <div className="w-16 flex-shrink-0 border-r border-border-dark flex items-center justify-center text-xs text-gray-500 p-2">
+      <motion.div variants={itemVariants} className="flex-none flex border-b border-border bg-card min-h-[40px]">
+        <div className="w-16 flex-shrink-0 border-r border-border flex items-center justify-center text-xs text-muted-foreground p-2">
           All-day
         </div>
         <div className="flex-1 relative">
@@ -103,7 +157,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
             {weekDays.map((day, idx) => (
               <div
                 key={idx}
-                className="relative hover:bg-white/5 transition-colors cursor-pointer group select-none"
+                className="relative hover:bg-accent transition-colors cursor-pointer group select-none"
                 onDoubleClick={() => onNewEvent && onNewEvent({
                   isAllDay: true,
                   start: day,
@@ -111,43 +165,56 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                 })}
               >
                 {/* All Day Events for this day */}
-                {events.filter(e => e.isAllDay && e.start.getDay() === day.getDay()).map(e => {
-                  const theme = EVENT_THEMES[e.type] || EVENT_THEMES.business;
-                  return (
-                    <div
-                      key={e.id}
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        const containerRect = containerRef.current?.getBoundingClientRect();
-                        if (containerRect) {
-                          onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
-                        }
-                      }}
-                      className={`m-1 p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
-                    >
-                      {e.title}
-                    </div>
-                  )
-                })}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {events.filter(e => {
+                    const dayStart = new Date(day);
+                    dayStart.setHours(0, 0, 0, 0);
+                    const dayEnd = new Date(day);
+                    dayEnd.setHours(23, 59, 59, 999);
+                    return e.isAllDay && e.start >= dayStart && e.start <= dayEnd;
+                  }).map(e => {
+                    const theme = calendars?.find(c => c.id === e.type)?.theme || defaultTheme;
+                    return (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        key={e.id}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          const containerRect = containerRef.current?.getBoundingClientRect();
+                          if (containerRect) {
+                            onEventClick?.(e, ev.currentTarget.getBoundingClientRect(), containerRect);
+                          }
+                        }}
+                        className={`m-1 p-1 rounded border-l-2 text-xs font-medium truncate cursor-pointer z-10 transition-all shadow-sm ${theme.border} ${e.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
+                      >
+                        {e.title}
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
               </div>
             ))}
           </div>
           {/* Vertical grid lines */}
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="absolute top-0 bottom-0 w-px bg-border-dark pointer-events-none" style={{ left: `${((i + 1) / 7) * 100}%` }} />
+            <div key={i} className="absolute top-0 bottom-0 w-px bg-border pointer-events-none" style={{ left: `${((i + 1) / 7) * 100}%` }} />
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Grid */}
-      <div className="flex-1 overflow-y-auto relative bg-background-dark custom-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-background no-scrollbar">
         <div className="flex h-[1440px] relative">
           {/* Time Labels */}
-          <div className="w-16 flex-shrink-0 border-r border-border-dark bg-surface-dark z-10 text-right pr-2 pt-2 select-none sticky left-0">
+          <div className="w-16 flex-shrink-0 border-r border-border bg-card z-10 text-right pr-2 pt-2 select-none sticky left-0">
             {hours.map(h => (
-              <div key={h} className="h-[60px] text-xs text-gray-500 relative -top-3">
+              <motion.div variants={itemVariants} key={h} className="h-[60px] text-xs text-muted-foreground relative -top-3">
                 {h === 0 ? '' : (h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`)}
-              </div>
+              </motion.div>
             ))}
           </div>
 
@@ -156,7 +223,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
             {/* Horizontal Lines - full width across all columns */}
             <div className="absolute inset-0 flex flex-col pointer-events-none z-0">
               {hours.map(h => (
-                <div key={h} className="h-[60px] border-b border-zinc-800/50 w-full"></div>
+                <motion.div variants={itemVariants} key={h} className="h-[60px] border-b border-border/50 w-full"></motion.div>
               ))}
             </div>
 
@@ -172,40 +239,60 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
                   }}
                 >
                   {/* Events for this day */}
-                  {arrangeEvents(events.filter(e => {
-                    if (e.isAllDay) return false;
-                    if (e.start.getDay() !== dayIdx) return false;
-                    const eventDate = e.start;
-                    if (eventDate < weekDays[0] || eventDate > weekDays[6]) return false;
-                    return true;
-                  })).map(({ event, style }) => {
-                    const startMin = event.start.getHours() * 60 + event.start.getMinutes();
-                    const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
-                    const theme = EVENT_THEMES[event.type] || EVENT_THEMES.business;
+                  {/* Events for this day - Filter overlapping and clamp to day boundaries */}
+                  {(() => {
+                    const dayStart = new Date(day);
+                    dayStart.setHours(0, 0, 0, 0);
+                    const dayEnd = new Date(day);
+                    dayEnd.setHours(23, 59, 59, 999);
+
+                    const dayEvents = events
+                      .filter(e => !e.isAllDay && e.start < dayEnd && e.end > dayStart)
+                      .map(e => {
+                        const clampedStart = e.start < dayStart ? dayStart : e.start;
+                        const clampedEnd = e.end > dayEnd ? dayEnd : e.end;
+                        return { ...e, start: clampedStart, end: clampedEnd };
+                      });
 
                     return (
-                      <div
-                        key={event.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const containerRect = containerRef.current?.getBoundingClientRect();
-                          if (containerRect) {
-                            onEventClick?.(event, e.currentTarget.getBoundingClientRect(), containerRect);
-                          }
-                        }}
-                        className={`absolute z-10 px-2 py-1 ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-text shadow-sm transition-all overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
-                        style={{
-                          top: `${startMin}px`,
-                          height: `${duration}px`,
-                          left: style.left,
-                          width: style.width
-                        }}
-                      >
-                        <p className="font-semibold truncate">{event.title}</p>
-                        <p className="opacity-80">{event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
+                      <AnimatePresence mode="popLayout">
+                        {arrangeEvents(dayEvents).map(({ event, style }) => {
+                          const startMin = event.start.getHours() * 60 + event.start.getMinutes();
+                          const duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
+                          const theme = calendars?.find(c => c.id === event.type)?.theme || defaultTheme;
+                          const originalEvent = events.find(ev => ev.id === event.id) || event;
+
+                          return (
+                            <motion.div
+                              layout
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              key={event.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const containerRect = containerRef.current?.getBoundingClientRect();
+                                if (containerRect) {
+                                  onEventClick?.(originalEvent, e.currentTarget.getBoundingClientRect(), containerRect);
+                                }
+                              }}
+                              className={`absolute z-10 px-2 py-1 ${originalEvent.end > dayEnd ? 'border-b-0 rounded-b-none opacity-80' : ''} ${originalEvent.start < dayStart ? 'border-t-0 rounded-t-none opacity-80' : ''} ${event.end >= new Date() ? 'border-l-4' : ''} rounded-md text-xs cursor-pointer shadow-sm overflow-hidden ${theme.border} ${event.id === selectedEventId ? `${theme.solidBg} text-white` : `${theme.bg} ${theme.text} ${theme.hover}`} `}
+                              style={{
+                                top: `${startMin}px`,
+                                height: `${duration}px`,
+                                left: style.left,
+                                width: style.width
+                              }}
+                            >
+                              <p className="font-semibold truncate">{originalEvent.title}</p>
+                              <p className="opacity-80">{event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
                     );
-                  })}
+                  })()}
 
                   {/* Current Time Line - only on today's column */}
                   {isToday(day) && (
@@ -226,7 +313,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onDateChange, 
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

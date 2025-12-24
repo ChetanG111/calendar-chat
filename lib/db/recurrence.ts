@@ -118,6 +118,8 @@ function eventToInstance(
         description: event.description,
         startAt: instanceStart,
         endAt: instanceEnd,
+        startDate: instanceStart.toISOString().split('T')[0],
+        endDate: instanceEnd.toISOString().split('T')[0],
         timezone: event.timezone,
         isAllDay: event.isAllDay,
         isRecurring: !!event.rrule,

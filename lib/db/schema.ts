@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS idx_events_end_at ON events(end_at)`;
  * All schema statements in order of execution
  */
 export const SCHEMA_STATEMENTS = [
-    CREATE_EVENTS_TABLE,
-    CREATE_START_AT_INDEX,
-    CREATE_END_AT_INDEX,
+  CREATE_EVENTS_TABLE,
+  CREATE_START_AT_INDEX,
+  CREATE_END_AT_INDEX,
 ];
