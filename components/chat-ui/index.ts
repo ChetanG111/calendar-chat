@@ -18,3 +18,8 @@ export type { EventAttachmentChipProps } from './EventAttachmentChip';
 
 export { RecurringEventOptionsBox } from './RecurringEventOptionsBox';
 export type { RecurringEventOptionsBoxProps, RecurringOption } from './RecurringEventOptionsBox';
+
+export { ChatInput } from './ChatInput';
+export { ChatWelcome } from './ChatWelcome';
+export { UserMessage, AssistantMessage, FormattedText } from './MessageBubble';
+export * from './types';
