@@ -48,7 +48,7 @@ export function EventCard({
     const theme = calendar?.theme;
 
     const typeBorderColor = theme?.border || 'border-gray-500';
-    const typeBgColor = compact ? 'bg-card/50' : (theme?.bg || 'bg-muted/50');
+    const typeBgColor = compact ? 'bg-zinc-800/40' : (theme?.bg || 'bg-zinc-800/40');
     const typeHoverBgColor = theme?.hover || 'hover:bg-muted/80';
 
     const handleAttachClick = (e: React.MouseEvent) => {
@@ -67,7 +67,8 @@ export function EventCard({
             }}
             onClick={() => onNavigateToEvent?.(new Date(event.start))}
             className={clsx(
-                "rounded-lg border-l-4 p-3 transition-colors cursor-pointer group",
+                "rounded-lg border-l-4 p-3 transition-all cursor-pointer group relative overflow-hidden",
+                "backdrop-blur-sm shadow-[inset_0_0_0_1000px_rgba(255,255,255,0.04),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
                 typeBorderColor,
                 typeBgColor,
                 typeHoverBgColor
