@@ -5,7 +5,7 @@ import { ViewType, CalendarEvent } from '@/types';
 import { clsx } from "clsx";
 import { Send } from '@/components/animate-ui/icons/send';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { QuizBox, YesNoBox, EventCard, DeleteEventBox, EventAttachmentChip } from '@/components/chat-ui';
+import { QuizBox, YesNoBox, EventCard, DeleteEventBox, EventAttachmentChip, RecurringEventOptionsBox, RecurringOption } from '@/components/chat-ui';
 
 // ============================================================================
 // Animation Variants - Premium Springy Physics
@@ -163,6 +163,10 @@ interface ChatMessage {
   deleteEvent?: {
     event: CalendarEvent;
   };
+  recurringOptions?: {
+    event: CalendarEvent;
+    actionType: 'edit' | 'delete';
+  };
 }
 
 interface ChatViewProps {
@@ -183,6 +187,35 @@ interface ChatViewProps {
 // ============================================================================
 // Message Components
 // ============================================================================
+
+function FormattedText({ text }: { text: string }) {
+  if (!text) return null;
+
+  // Regex for **bold** text and text in "quotes"
+  const parts = text.split(/(\*\*.*?\*\*|(?<=^|\s)".*?"(?=\s|$))/g);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return (
+            <strong key={i} className="font-bold text-foreground">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+        if (part.startsWith('"') && part.endsWith('"')) {
+          return (
+            <span key={i} className="font-semibold text-primary/90">
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
 
 function UserMessage({
   content,
@@ -223,7 +256,7 @@ function UserMessage({
           </motion.div>
         )}
         <motion.span variants={textContentVariants} className="inline-block">
-          {content}
+          <FormattedText text={content} />
         </motion.span>
       </motion.div>
       <motion.div
@@ -243,6 +276,7 @@ function AssistantMessage({
   onQuizAnswer,
   onYesNoAnswer,
   onDeleteEventAnswer,
+  onRecurringAnswer,
   onFocusInput,
   onAttachToChat,
 }: {
@@ -252,6 +286,7 @@ function AssistantMessage({
   onQuizAnswer?: (messageId: string, answer: 'yes' | 'no' | 'custom') => void;
   onYesNoAnswer?: (messageId: string, answer: 'yes' | 'no') => void;
   onDeleteEventAnswer?: (messageId: string, event: CalendarEvent, answer: 'delete' | 'cancel') => void;
+  onRecurringAnswer?: (messageId: string, event: CalendarEvent, option: RecurringOption) => void;
   onFocusInput?: () => void;
   onAttachToChat?: (event: CalendarEvent) => void;
 }) {
@@ -294,7 +329,7 @@ function AssistantMessage({
                 isError && "text-red-500"
               )}
             >
-              {message.content}
+              <FormattedText text={message.content} />
             </motion.div>
           )}
 
@@ -324,6 +359,17 @@ function AssistantMessage({
               event={message.deleteEvent.event}
               calendars={calendars}
               onAnswer={(answer) => onDeleteEventAnswer?.(message.id, message.deleteEvent!.event, answer)}
+            />
+          )}
+
+          {/* Show Recurring Event Options Box if present */}
+          {message.recurringOptions && (
+            <RecurringEventOptionsBox
+              messageId={message.id}
+              event={message.recurringOptions.event}
+              actionType={message.recurringOptions.actionType}
+              calendars={calendars}
+              onAnswer={(option) => onRecurringAnswer?.(message.id, message.recurringOptions!.event, option)}
             />
           )}
 
@@ -462,6 +508,31 @@ const ChatView: React.FC<ChatViewProps> = ({
     }
   }, [onEventDeleted]);
 
+  // Handle recurring event answer
+  const handleRecurringAnswer = useCallback((messageId: string, event: CalendarEvent, option: RecurringOption) => {
+    const labels = {
+      single: '**Just this occurrence**',
+      future: '**This & Future ones**',
+      all: '**The entire series**'
+    };
+
+    setMessages(prev => [...prev, {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: labels[option],
+      timestamp: new Date(),
+    }]);
+
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `Applied changes to: **${labels[option]}** for "${event.title}".`,
+        timestamp: new Date(),
+      }]);
+    }, 600);
+  }, []);
+
   // Auto-resize textarea
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
@@ -480,6 +551,7 @@ const ChatView: React.FC<ChatViewProps> = ({
     const isYesNoCommand = trimmed.toLowerCase() === 'yesno';
     const isEventCommand = trimmed.toLowerCase() === 'event';
     const isDeleteCommand = trimmed.toLowerCase() === 'delete';
+    const isRecurringCommand = trimmed.toLowerCase() === 'recurring';
     // Test commands for multiple events: event1, event2, event3
     const eventCountMatch = trimmed.toLowerCase().match(/^event([123])$/);
     const eventCount = eventCountMatch ? parseInt(eventCountMatch[1]) : 0;
@@ -598,6 +670,40 @@ const ChatView: React.FC<ChatViewProps> = ({
             timestamp: new Date(),
             deleteEvent: {
               event: eventToDelete,
+            },
+          }]);
+        }, 500);
+      }
+
+      // If recurring command, add assistant message with recurring options
+      if (isRecurringCommand) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(10, 0, 0, 0);
+        const tomorrowEnd = new Date(tomorrow);
+        tomorrowEnd.setHours(11, 0, 0, 0);
+
+        const recurringEvent: CalendarEvent = {
+          id: 'recurring-test-event-' + crypto.randomUUID(),
+          title: 'Weekly Sync',
+          start: tomorrow,
+          end: tomorrowEnd,
+          type: 'business',
+          description: 'Recurring weekly sync.',
+          location: 'Virtual Room',
+          isAllDay: false,
+          recurrence: 'weekly',
+        };
+
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            recurringOptions: {
+              event: recurringEvent,
+              actionType: 'delete',
             },
           }]);
         }, 500);
@@ -774,6 +880,7 @@ const ChatView: React.FC<ChatViewProps> = ({
                     onQuizAnswer={handleQuizAnswer}
                     onYesNoAnswer={handleYesNoAnswer}
                     onDeleteEventAnswer={handleDeleteEventAnswer}
+                    onRecurringAnswer={handleRecurringAnswer}
                     onFocusInput={focusInput}
                     onAttachToChat={onAttachEvent}
                   />

@@ -15,3 +15,6 @@ export type { DeleteEventBoxProps } from './DeleteEventBox';
 
 export { EventAttachmentChip } from './EventAttachmentChip';
 export type { EventAttachmentChipProps } from './EventAttachmentChip';
+
+export { RecurringEventOptionsBox } from './RecurringEventOptionsBox';
+export type { RecurringEventOptionsBoxProps, RecurringOption } from './RecurringEventOptionsBox';
