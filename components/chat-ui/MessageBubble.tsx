@@ -7,6 +7,7 @@ import { QuizBox } from './QuizBox';
 import { YesNoBox } from './YesNoBox';
 import { EventCard } from './EventCard';
 import { DeleteEventBox } from './DeleteEventBox';
+import { UpdateEventBox } from './UpdateEventBox';
 import { RecurringEventOptionsBox, RecurringOption } from './RecurringEventOptionsBox';
 import {
   userMessageVariants,
@@ -109,9 +110,11 @@ export function AssistantMessage({
   onQuizAnswer,
   onYesNoAnswer,
   onDeleteEventAnswer,
+  onUpdateEventAnswer,
   onRecurringAnswer,
   onFocusInput,
   onAttachToChat,
+  onEventSelect,
 }: {
   message: ChatMessage;
   onNavigateToEvent?: (date: Date) => void;
@@ -119,9 +122,11 @@ export function AssistantMessage({
   onQuizAnswer?: (messageId: string, answer: 'yes' | 'no' | 'custom') => void;
   onYesNoAnswer?: (messageId: string, answer: 'yes' | 'no') => void;
   onDeleteEventAnswer?: (messageId: string, event: CalendarEvent, answer: 'delete' | 'cancel') => void;
+  onUpdateEventAnswer?: (messageId: string, event: CalendarEvent, answer: 'update' | 'cancel') => void;
   onRecurringAnswer?: (messageId: string, event: CalendarEvent, option: RecurringOption) => void;
   onFocusInput?: () => void;
   onAttachToChat?: (event: CalendarEvent) => void;
+  onEventSelect?: (messageId: string, event: CalendarEvent) => void;
 }) {
   const isSuccess = message.content.startsWith('✅');
   const isError = message.content.startsWith('❌');
@@ -198,6 +203,17 @@ export function AssistantMessage({
             />
           )}
 
+          {/* Show Update Event Box if present */}
+          {message.updateEvent && (
+            <UpdateEventBox
+              messageId={message.id}
+              event={message.updateEvent.event}
+              calendars={calendars}
+              onAnswer={(answer) => onUpdateEventAnswer?.(message.id, message.updateEvent!.event, answer)}
+              disabled={message.isAnswered}
+            />
+          )}
+
           {/* Show Recurring Event Options Box if present */}
           {message.recurringOptions && (
             <RecurringEventOptionsBox
@@ -208,6 +224,48 @@ export function AssistantMessage({
               onAnswer={(option) => onRecurringAnswer?.(message.id, message.recurringOptions!.event, option)}
               disabled={message.isAnswered}
             />
+          )}
+
+          {/* Show Option List for event disambiguation */}
+          {message.optionList?.events && message.optionList.events.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-border rounded-2xl p-4 shadow-lg"
+            >
+              <p className="text-sm text-muted-foreground mb-3">Select an event:</p>
+              <div className="space-y-2">
+                {message.optionList.events.map((event, index) => (
+                  <motion.button
+                    key={event.id || `option-${index}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    whileHover={message.isAnswered ? {} : { scale: 1.01 }}
+                    whileTap={message.isAnswered ? {} : { scale: 0.99 }}
+                    onClick={() => !message.isAnswered && onEventSelect?.(message.id, event)}
+                    disabled={message.isAnswered}
+                    className={clsx(
+                      "w-full text-left p-3 rounded-xl border transition-all",
+                      message.isAnswered
+                        ? "bg-muted/10 border-border/50 opacity-50 cursor-not-allowed"
+                        : "bg-muted/30 border-border hover:bg-muted hover:border-border/80"
+                    )}
+                  >
+                    <div className="font-medium text-foreground">{event.title}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(event.start).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
           )}
 
           {/* Show event card if one was created/updated */}
@@ -257,3 +315,4 @@ export function AssistantMessage({
     </motion.div>
   );
 }
+

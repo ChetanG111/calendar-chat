@@ -8,6 +8,7 @@ import { RecurringOption } from '@/components/chat-ui/RecurringEventOptionsBox';
 import { UserMessage, AssistantMessage } from '@/components/chat-ui/MessageBubble';
 import { ChatInput } from '@/components/chat-ui/ChatInput';
 import { ChatWelcome } from '@/components/chat-ui/ChatWelcome';
+import type { ConversationState, UIComponentType } from '@/lib/chat';
 
 // ============================================================================
 // Types
@@ -24,6 +25,25 @@ interface ChatViewProps {
   attachedEvent?: CalendarEvent | null;
   onClearAttachedEvent?: () => void;
   onAttachEvent?: (event: CalendarEvent) => void;
+}
+
+interface ChatAPIResponse {
+  success: boolean;
+  reply: string | null;
+  state: ConversationState;
+  ui?: {
+    type: string;
+    payload: unknown;
+  } | null;
+  action?: {
+    type: string;
+    data?: Partial<CalendarEvent>;
+    eventId?: string;
+    scope?: string;
+    criteria?: unknown;
+    events?: Partial<CalendarEvent>[];
+  } | null;
+  error?: string;
 }
 
 // ============================================================================
@@ -45,6 +65,8 @@ const ChatView: React.FC<ChatViewProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationState, setConversationState] = useState<ConversationState | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -59,73 +81,346 @@ const ChatView: React.FC<ChatViewProps> = ({
     textareaRef.current?.focus();
   }, []);
 
-  // Handle quiz answer
-  const handleQuizAnswer = useCallback((messageId: string, answer: 'yes' | 'no' | 'custom') => {
-    // Add a user response message
+  // ============================================================================
+  // API Communication
+  // ============================================================================
+
+  const sendToAPI = useCallback(async (
+    messageType: 'text' | 'ui_response',
+    currentState: ConversationState | null,
+    content?: string,
+    uiResponse?: { type: UIComponentType; value: unknown }
+  ): Promise<ChatAPIResponse | null> => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: {
+            type: messageType,
+            content,
+            uiResponse,
+          },
+          state: currentState,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('[ChatView] API error:', error);
+      return null;
+    }
+  }, []); // No dependencies - state is passed as parameter
+
+  // ============================================================================
+  // Process API Response
+  // ============================================================================
+
+  const processAPIResponse = useCallback((response: ChatAPIResponse) => {
+    // Update conversation state
+    if (response.state) {
+      setConversationState(response.state);
+    }
+
+    // Add assistant message with any UI components
+    const assistantMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: response.reply || '',
+      timestamp: new Date(),
+    };
+
+    // Handle actions (CRUD operations)
+    if (response.action) {
+      switch (response.action.type) {
+        case 'create_event':
+          if (response.action.data) {
+            const newEvent: CalendarEvent = {
+              id: crypto.randomUUID(),
+              title: response.action.data.title || 'New Event',
+              start: response.action.data.start ? new Date(response.action.data.start) : new Date(),
+              end: response.action.data.end ? new Date(response.action.data.end) : new Date(),
+              type: response.action.data.type || 'default',
+              description: response.action.data.description,
+              location: response.action.data.location,
+              isAllDay: response.action.data.isAllDay,
+            };
+
+            // Attach event to the assistant message so it's shown in chat
+            assistantMessage.event = newEvent;
+            assistantMessage.intent = 'create';
+            assistantMessage.content = `✅ Created "${newEvent.title}"`;
+
+            // Actually create the event
+            onEventCreated?.(newEvent);
+          }
+          break;
+
+        case 'update_event':
+          // The actual update happens via the UI confirmation
+          break;
+
+        case 'delete_event':
+          // The actual delete happens via the UI confirmation
+          break;
+
+        case 'query_events':
+          // Attach the query results to the assistant message
+          if (response.action.events && response.action.events.length > 0) {
+            // Convert events to proper CalendarEvent format
+            assistantMessage.events = response.action.events.map((e: Partial<CalendarEvent>) => ({
+              id: e.id || crypto.randomUUID(),
+              title: e.title || 'Untitled',
+              start: e.start ? new Date(e.start) : new Date(),
+              end: e.end ? new Date(e.end) : new Date(),
+              type: e.type || 'default',
+              description: e.description,
+              location: e.location,
+              isAllDay: e.isAllDay,
+            }));
+          }
+          break;
+      }
+    }
+
+    // Handle UI components from the API
+    if (response.ui) {
+      const uiType = response.ui.type as UIComponentType;
+      const payload = response.ui.payload as Record<string, unknown>;
+
+      switch (uiType) {
+        case 'scope_selector':
+          assistantMessage.recurringOptions = {
+            event: payload.event as CalendarEvent,
+            actionType: payload.actionType as 'edit' | 'delete',
+          };
+          break;
+
+        case 'confirm_action_delete':
+          assistantMessage.deleteEvent = {
+            event: payload.event as CalendarEvent,
+          };
+          break;
+
+        case 'confirm_action_update':
+          assistantMessage.updateEvent = {
+            event: payload.event as CalendarEvent,
+          };
+          break;
+
+        case 'option_list':
+          // Convert events to proper CalendarEvent format (handle Date string conversion)
+          const rawEvents = payload.events as Partial<CalendarEvent>[] | undefined;
+          if (rawEvents && rawEvents.length > 0) {
+            assistantMessage.optionList = {
+              events: rawEvents.map((e) => ({
+                id: e.id || crypto.randomUUID(),
+                title: e.title || 'Untitled',
+                start: e.start ? new Date(e.start) : new Date(),
+                end: e.end ? new Date(e.end) : new Date(),
+                type: e.type || 'default',
+                description: e.description,
+                location: e.location,
+                isAllDay: e.isAllDay,
+              })),
+              action: payload.action as 'update' | 'delete' | undefined,
+            };
+          }
+          break;
+
+        case 'event_card':
+          assistantMessage.event = payload.event as CalendarEvent;
+          break;
+
+        case 'yes_no':
+          assistantMessage.yesno = {
+            question: response.reply || 'Please confirm',
+          };
+          break;
+      }
+    }
+
+    setMessages(prev => [...prev, assistantMessage]);
+  }, [onEventCreated]);
+
+  // ============================================================================
+  // UI Response Handlers
+  // ============================================================================
+
+  // Handle quiz answer (yes/no/custom)
+  const handleQuizAnswer = useCallback(async (messageId: string, answer: 'yes' | 'no' | 'custom') => {
     const responseText = answer === 'custom'
-      ? '' // Custom will focus input, user types their own
+      ? ''
       : answer === 'yes'
         ? 'Yes'
         : 'No';
 
+    // Mark as answered
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m));
+
     if (responseText) {
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m).concat([{
+      // Add user message
+      setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'user',
         content: responseText,
         timestamp: new Date(),
-      }]));
+      }]);
+
+      // Send UI response to API
+      setIsLoading(true);
+      const response = await sendToAPI('ui_response', conversationState, undefined, {
+        type: 'yes_no',
+        value: answer === 'yes',
+      });
+      setIsLoading(false);
+
+      if (response) {
+        processAPIResponse(response);
+      }
     } else {
-      // If it was 'custom', we still mark as answered to disable buttons
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m));
       focusInput();
     }
-  }, [focusInput]);
+  }, [sendToAPI, processAPIResponse, focusInput, conversationState]);
 
   // Handle yes/no answer
-  const handleYesNoAnswer = useCallback((messageId: string, answer: 'yes' | 'no') => {
+  const handleYesNoAnswer = useCallback(async (messageId: string, answer: 'yes' | 'no') => {
     const responseText = answer === 'yes' ? 'Yes' : 'No';
+
+    // Mark as answered and add user message
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m).concat([{
       id: crypto.randomUUID(),
       role: 'user',
       content: responseText,
       timestamp: new Date(),
     }]));
-  }, []);
+
+    // Send UI response to API
+    setIsLoading(true);
+    const response = await sendToAPI('ui_response', conversationState, undefined, {
+      type: 'yes_no',
+      value: answer === 'yes',
+    });
+    setIsLoading(false);
+
+    if (response) {
+      processAPIResponse(response);
+    }
+  }, [sendToAPI, processAPIResponse, conversationState]);
 
   // Handle delete event answer
-  const handleDeleteEventAnswer = useCallback((messageId: string, event: CalendarEvent, answer: 'delete' | 'cancel') => {
-    // Mark the message as answered
+  const handleDeleteEventAnswer = useCallback(async (messageId: string, event: CalendarEvent, answer: 'delete' | 'cancel') => {
+    // Mark as answered
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m));
 
     if (answer === 'delete') {
-      // Call the parent delete handler if provided
+      // Call the parent delete handler
       onEventDeleted?.(event);
-      setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: `✅ Event "${event.title}" has been deleted.`,
-        timestamp: new Date(),
-      }]);
-    } else {
-      setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: 'Event deletion cancelled.',
-        timestamp: new Date(),
-      }]);
-    }
-  }, [onEventDeleted]);
 
-  // Handle recurring event answer
-  const handleRecurringAnswer = useCallback((messageId: string, event: CalendarEvent, option: RecurringOption) => {
+      // Send confirmation to API
+      setIsLoading(true);
+      const response = await sendToAPI('ui_response', conversationState, undefined, {
+        type: 'confirm_action_delete',
+        value: true,
+      });
+      setIsLoading(false);
+
+      if (response) {
+        processAPIResponse(response);
+      } else {
+        // Fallback if API fails
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `✅ Event "${event.title}" has been deleted.`,
+          timestamp: new Date(),
+        }]);
+      }
+    } else {
+      // Send cancellation to API
+      setIsLoading(true);
+      const response = await sendToAPI('ui_response', conversationState, undefined, {
+        type: 'confirm_action_delete',
+        value: false,
+      });
+      setIsLoading(false);
+
+      if (response) {
+        processAPIResponse(response);
+      } else {
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: 'Event deletion cancelled.',
+          timestamp: new Date(),
+        }]);
+      }
+    }
+  }, [sendToAPI, processAPIResponse, onEventDeleted, conversationState]);
+
+  // Handle update event answer
+  const handleUpdateEventAnswer = useCallback(async (messageId: string, event: CalendarEvent, answer: 'update' | 'cancel') => {
+    // Mark as answered
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m));
+
+    if (answer === 'update') {
+      // Call the parent update handler
+      onEventUpdated?.(event);
+
+      // Send confirmation to API
+      setIsLoading(true);
+      const response = await sendToAPI('ui_response', conversationState, undefined, {
+        type: 'confirm_action_update',
+        value: true,
+      });
+      setIsLoading(false);
+
+      if (response) {
+        processAPIResponse(response);
+      } else {
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `✅ Event "${event.title}" has been updated.`,
+          timestamp: new Date(),
+        }]);
+      }
+    } else {
+      // Send cancellation to API
+      setIsLoading(true);
+      const response = await sendToAPI('ui_response', conversationState, undefined, {
+        type: 'confirm_action_update',
+        value: false,
+      });
+      setIsLoading(false);
+
+      if (response) {
+        processAPIResponse(response);
+      } else {
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: 'Event update cancelled.',
+          timestamp: new Date(),
+        }]);
+      }
+    }
+  }, [sendToAPI, processAPIResponse, onEventUpdated, conversationState]);
+
+  // Handle recurring event scope selection
+  const handleRecurringAnswer = useCallback(async (messageId: string, event: CalendarEvent, option: RecurringOption) => {
     const labels = {
       single: '**Just this occurrence**',
       future: '**This & Future ones**',
       all: '**The entire series**'
     };
 
-    // Mark the message as answered
+    // Mark as answered and add user message
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m).concat([{
       id: crypto.randomUUID(),
       role: 'user',
@@ -133,229 +428,96 @@ const ChatView: React.FC<ChatViewProps> = ({
       timestamp: new Date(),
     }]));
 
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: `Applied changes to: **${labels[option]}** for "${event.title}".`,
-        timestamp: new Date(),
-      }]);
-    }, 600);
-  }, []);
+    // Send scope selection to API
+    setIsLoading(true);
+    const response = await sendToAPI('ui_response', conversationState, undefined, {
+      type: 'scope_selector',
+      value: option,
+    });
+    setIsLoading(false);
 
-  // Send message
+    if (response) {
+      processAPIResponse(response);
+    }
+  }, [sendToAPI, processAPIResponse, conversationState]);
+
+  // Handle event selection from option list
+  const handleEventSelect = useCallback(async (messageId: string, event: CalendarEvent) => {
+    // Mark as answered
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAnswered: true } : m));
+
+    // Add user message showing selection
+    setMessages(prev => [...prev, {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: `Selected: "${event.title}"`,
+      timestamp: new Date(),
+    }]);
+
+    // Send selection to API
+    setIsLoading(true);
+    const response = await sendToAPI('ui_response', conversationState, undefined, {
+      type: 'option_list',
+      value: event.id,
+    });
+    setIsLoading(false);
+
+    if (response) {
+      processAPIResponse(response);
+    }
+  }, [sendToAPI, processAPIResponse, conversationState]);
+
+  // ============================================================================
+  // Send Message
+  // ============================================================================
+
   const handleSend = useCallback(async () => {
-    if (isAnimating) return;
+    if (isAnimating || isLoading) return;
     const trimmed = inputValue.trim();
     if (!trimmed && !attachedEvent) return;
 
-    const isQuizCommand = trimmed.toLowerCase() === 'quiz';
-    const isYesNoCommand = trimmed.toLowerCase() === 'yesno';
-    const isEventCommand = trimmed.toLowerCase() === 'event';
-    const isDeleteCommand = trimmed.toLowerCase() === 'delete';
-    const isRecurringCommand = trimmed.toLowerCase() === 'recurring';
-    // Test commands for multiple events: event1, event2, event3
-    const eventCountMatch = trimmed.toLowerCase().match(/^event([123])$/);
-    const eventCount = eventCountMatch ? parseInt(eventCountMatch[1]) : 0;
-
-    setIsAnimating(true);
-
-    // Capture attached event before clearing
+    // Capture current state and attached event before any state changes
+    const currentState = conversationState;
     const eventToAttach = attachedEvent;
+    const messageContent = eventToAttach
+      ? `[Regarding event: "${eventToAttach.title}"] ${trimmed}`
+      : trimmed;
 
-    // Delay message appearance to sync with animation "fly out"
-    setTimeout(() => {
+    // Optimistically update UI immediately
+    setMessages(prev => [...prev, {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: trimmed,
+      timestamp: new Date(),
+      event: eventToAttach || undefined,
+    }]);
+
+    // Clear input and attached event immediately
+    setInputValue('');
+    if (eventToAttach && onClearAttachedEvent) {
+      onClearAttachedEvent();
+    }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+
+    // Send to API
+    setIsLoading(true);
+    const response = await sendToAPI('text', currentState, messageContent);
+    setIsLoading(false);
+
+    if (response) {
+      processAPIResponse(response);
+    } else {
+      // Fallback error message
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
-        role: 'user',
-        content: trimmed,
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date(),
-        // Include attached event in the user message
-        event: eventToAttach || undefined,
       }]);
-
-      // Clear the attached event after sending
-      if (eventToAttach && onClearAttachedEvent) {
-        onClearAttachedEvent();
-      }
-      setInputValue('');
-
-      // Reset textarea height via ref
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
-
-      // If quiz command, add assistant message with quiz box
-      if (isQuizCommand) {
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            quiz: {
-              question: 'Would you like to create a new event?',
-            },
-          }]);
-        }, 500);
-      }
-
-      // If yesno command, add assistant message with yes/no box
-      if (isYesNoCommand) {
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            yesno: {
-              question: 'Are you sure you want to proceed?',
-            },
-          }]);
-        }, 500);
-      }
-
-      // If event command, add assistant message with placeholder event
-      if (isEventCommand) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(14, 0, 0, 0);
-        const tomorrowEnd = new Date(tomorrow);
-        tomorrowEnd.setHours(15, 0, 0, 0);
-
-        const placeholderEvent: CalendarEvent = {
-          id: 'placeholder-event-' + crypto.randomUUID(),
-          title: 'Team Meeting',
-          start: tomorrow,
-          end: tomorrowEnd,
-          type: 'default',
-          description: 'Weekly sync with the team to discuss progress and blockers.',
-          location: 'Conference Room A',
-          isAllDay: false,
-        };
-
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: 'Here is the event you requested:',
-            timestamp: new Date(),
-            event: placeholderEvent,
-          }]);
-        }, 500);
-      }
-
-      // If delete command, add assistant message with delete confirmation
-      if (isDeleteCommand) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(14, 0, 0, 0);
-        const tomorrowEnd = new Date(tomorrow);
-        tomorrowEnd.setHours(15, 0, 0, 0);
-
-        const eventToDelete: CalendarEvent = {
-          id: 'delete-test-event-' + crypto.randomUUID(),
-          title: 'Team Meeting',
-          start: tomorrow,
-          end: tomorrowEnd,
-          type: 'business',
-          description: 'Weekly sync with the team.',
-          location: 'Conference Room B',
-          isAllDay: false,
-        };
-
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            deleteEvent: {
-              event: eventToDelete,
-            },
-          }]);
-        }, 500);
-      }
-
-      // If recurring command, add assistant message with recurring options
-      if (isRecurringCommand) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(10, 0, 0, 0);
-        const tomorrowEnd = new Date(tomorrow);
-        tomorrowEnd.setHours(11, 0, 0, 0);
-
-        const recurringEvent: CalendarEvent = {
-          id: 'recurring-test-event-' + crypto.randomUUID(),
-          title: 'Weekly Sync',
-          start: tomorrow,
-          end: tomorrowEnd,
-          type: 'business',
-          description: 'Recurring weekly sync.',
-          location: 'Virtual Room',
-          isAllDay: false,
-          rrule: 'FREQ=WEEKLY',
-        };
-
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            recurringOptions: {
-              event: recurringEvent,
-              actionType: 'delete',
-            },
-          }]);
-        }, 500);
-      }
-
-      // If eventN command (event1, event2, event3), show N placeholder events
-      if (eventCount > 0) {
-        const placeholderEvents: CalendarEvent[] = [];
-        const eventTypes = ['default', 'business', 'personal'];
-        const eventTitles = ['Morning Standup', 'Client Call', 'Team Lunch'];
-        const eventDescriptions = [
-          'Daily sync with the dev team.',
-          'Quarterly review with the client.',
-          'Casual lunch with the team.',
-        ];
-        const eventLocations = ['Zoom', 'Conference Room A', 'Cafeteria'];
-
-        for (let i = 0; i < eventCount; i++) {
-          const eventDate = new Date();
-          eventDate.setDate(eventDate.getDate() + 1);
-          eventDate.setHours(9 + i * 3, 0, 0, 0);
-          const eventEnd = new Date(eventDate);
-          eventEnd.setHours(eventDate.getHours() + 1, 0, 0, 0);
-
-          placeholderEvents.push({
-            id: `placeholder-event-${i}-` + crypto.randomUUID(),
-            title: eventTitles[i],
-            start: eventDate,
-            end: eventEnd,
-            type: eventTypes[i],
-            description: eventDescriptions[i],
-            location: eventLocations[i],
-            isAllDay: false,
-          });
-        }
-
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: `Here are ${eventCount} event${eventCount > 1 ? 's' : ''} for you:`,
-            timestamp: new Date(),
-            events: placeholderEvents,
-          }]);
-        }, 500);
-      }
-    }, 400);
-
-    setTimeout(() => setIsAnimating(false), 1200);
-  }, [inputValue, isAnimating, attachedEvent, onClearAttachedEvent]);
+    }
+  }, [inputValue, isAnimating, isLoading, attachedEvent, onClearAttachedEvent, sendToAPI, conversationState, processAPIResponse]);
 
   // Handle suggestion click from welcome screen
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -390,14 +552,25 @@ const ChatView: React.FC<ChatViewProps> = ({
                     onQuizAnswer={handleQuizAnswer}
                     onYesNoAnswer={handleYesNoAnswer}
                     onDeleteEventAnswer={handleDeleteEventAnswer}
+                    onUpdateEventAnswer={handleUpdateEventAnswer}
                     onRecurringAnswer={handleRecurringAnswer}
                     onFocusInput={focusInput}
                     onAttachToChat={onAttachEvent}
+                    onEventSelect={handleEventSelect}
                   />
                 )
               ))}
             </AnimatePresence>
           )}
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <div className="animate-pulse">●</div>
+              <span>Thinking...</span>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -416,7 +589,7 @@ const ChatView: React.FC<ChatViewProps> = ({
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onSend={handleSend}
-        isAnimating={isAnimating}
+        isAnimating={isAnimating || isLoading}
         attachedEvent={attachedEvent}
         onClearAttachedEvent={onClearAttachedEvent}
         calendars={calendars}

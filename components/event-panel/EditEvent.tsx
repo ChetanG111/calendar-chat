@@ -43,7 +43,7 @@ export const EditEvent: React.FC<EditEventProps> = ({
     // Initialize form data
     useEffect(() => {
         const targetEvent = mode === 'edit' ? event : undefined;
-        
+
         const formatDate = (date: Date) => {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -75,7 +75,7 @@ export const EditEvent: React.FC<EditEventProps> = ({
             setDescription(data.description || '');
             setLocation(data.location || '');
             // Do not set event type here based on calendars to avoid reset
-            
+
             if (data.start) {
                 setStartTime(formatTime(data.start));
                 setStartDate(data.startDate || formatDate(data.start));
@@ -94,15 +94,17 @@ export const EditEvent: React.FC<EditEventProps> = ({
 
             setIsAllDay(data.isAllDay || false);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode, event, initialData]);
 
     // Separate effect to set default calendar when they load
+    // Only set if eventType is still the initial 'default' value
     useEffect(() => {
         if (mode === 'create' && eventType === 'default' && calendars.length > 0) {
-             setEventType(calendars.find(c => c.isDefault)?.id || calendars[0].id);
+            setEventType(calendars.find(c => c.isDefault)?.id || calendars[0].id);
         }
-    }, [calendars, mode, eventType]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [calendars, mode]); // Remove eventType from dependencies to avoid reset
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {

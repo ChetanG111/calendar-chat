@@ -166,9 +166,18 @@ export default function Home() {
                             setCurrentDate(date);
                             setCurrentView('day');
                         }}
-                        onEventCreated={() => refreshEvents()}
-                        onEventUpdated={() => refreshEvents()}
-                        onEventDeleted={() => refreshEvents()}
+                        onEventCreated={createEvent}
+                        onEventUpdated={async (event) => {
+                            if (event.id) {
+                                await updateEvent(event.id, event);
+                            }
+                        }}
+                        onEventDeleted={async (event) => {
+                            const eventId = event.eventId || event.id;
+                            if (eventId) {
+                                await deleteEvent(eventId);
+                            }
+                        }}
                         calendars={calendars}
                         attachedEvent={attachedEventForChat}
                         onClearAttachedEvent={() => setAttachedEventForChat(null)}

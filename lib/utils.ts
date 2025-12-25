@@ -6,6 +6,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function getMasterEventId(id: string): string {
+  const parts = id.split('_');
+  // Expected format: evt_TIMESTAMP_RANDOM_ISOSTRING (length 4) vs evt_TIMESTAMP_RANDOM (length 3)
+  if (parts.length > 3) {
+    return parts.slice(0, 3).join('_');
+  }
+  return id;
+}
+
 /**
  * Arranges events that may overlap in time by calculating 
  * horizontal positioning (left offset and width) so they 

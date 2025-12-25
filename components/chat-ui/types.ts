@@ -17,9 +17,16 @@ export interface ChatMessage {
   deleteEvent?: {
     event: CalendarEvent;
   };
+  updateEvent?: {
+    event: CalendarEvent;
+  };
   recurringOptions?: {
     event: CalendarEvent;
     actionType: 'edit' | 'delete';
+  };
+  optionList?: {
+    events: CalendarEvent[];
+    action?: 'update' | 'delete';
   };
   isAnswered?: boolean;
 }

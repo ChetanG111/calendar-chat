@@ -38,3 +38,6 @@ data/
 *.db
 *.db-shm
 *.db-wal
+
+#instructions
+.chat-backend-instructions.md

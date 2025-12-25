@@ -9,6 +9,7 @@ import {
     deleteEventApi,
     getViewDateRange,
 } from '@/lib/api/events';
+import { getMasterEventId } from '@/lib/utils';
 
 interface CalendarContextType {
     // State
@@ -131,37 +132,13 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateEvent = async (id: string, eventData: Partial<CalendarEvent>) => {
-        // Handle instance IDs (e.g., event_id_date)
-
-        // If the ID format is evt_TIMESTAMP_RANDOM_DATE, splitting might be tricky.
-        // Let's rely on the fact that instance IDs usually append _DATE at the end.
-        // But our DB logic for instance ID is: `${event.id}_${instanceStart.toISOString()}`
-        // And event.id is `evt_${Date.now()}_${random}`
-        // So a recurring instance ID looks like: evt_123_abc_2025-01-01T00:00:00.000Z
-
-        // Safer extraction:
-        // If it contains more than 2 underscores AND ends with a date-like string, it's an instance.
-        // But wait, generateEventId uses `evt_TIMESTAMP_RANDOM`. That has 2 underscores.
-        // Instance ID adds a 3rd underscore: `evt_TIMESTAMP_RANDOM_ISOSTRING`.
-
-        let targetId = id;
-        const parts = id.split('_');
-        if (parts.length > 3) {
-            // It's likely an instance ID, remove the last part (date)
-            targetId = parts.slice(0, 3).join('_');
-        }
-
+        const targetId = getMasterEventId(id);
         await updateEventApi(targetId, eventData);
         await loadEvents();
     };
 
     const deleteEvent = async (id: string) => {
-        let targetId = id;
-        const parts = id.split('_');
-        if (parts.length > 3) {
-            targetId = parts.slice(0, 3).join('_');
-        }
-
+        const targetId = getMasterEventId(id);
         await deleteEventApi(targetId);
         await loadEvents();
     };

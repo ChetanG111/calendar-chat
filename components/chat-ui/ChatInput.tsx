@@ -129,16 +129,29 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
               </button>
             </div>
 
-            {/* Textarea */}
-            <textarea
-              ref={ref}
-              value={value}
-              onChange={(e) => {
-                const textarea = e.target;
-                textarea.style.height = 'auto';
-                textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
-                onChange(e);
-              }}
+                        {/* Textarea */}
+
+                        <textarea
+
+                          ref={ref}
+
+                          value={value}
+
+                          onChange={(e) => {
+
+                            const textarea = e.target;
+
+                            const MAX_HEIGHT = 120;
+
+                            textarea.style.height = 'auto';
+
+                            textarea.style.height = `${Math.min(textarea.scrollHeight, MAX_HEIGHT)}px`;
+
+                            onChange(e);
+
+                          }}
+
+            
               onKeyDown={handleKeyDown}
               className="flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground resize-none py-3 px-2 text-base"
               placeholder={placeholder}
